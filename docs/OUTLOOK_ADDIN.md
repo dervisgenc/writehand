@@ -1,6 +1,15 @@
 # Outlook add-in
 
-**Status: deferred (2026-10-23).** Gmail on the web comes first; this plan is kept for later and its decisions are still open. This document records the plan for bringing Writehand to the Outlook applications as an Office Add-in (Office.js), the facts it rests on, and the decisions that must not change without discussion. Once the add-in ships, it becomes the add-in's guide (install, architecture, hosting, testing) and the plan sections are trimmed.
+**Status: in progress (2026-10-23), Windows first.** Work happens on the `feat/outlook-addin` branch. The first milestone is an MVP for the new Outlook for Windows and classic Outlook for Windows (Microsoft 365), checked in a real client where one is available. This document records the plan for bringing Writehand to the Outlook applications as an Office Add-in (Office.js), the facts it rests on, and the decisions that must not change without discussion. Once the add-in ships, it becomes the add-in's guide (install, architecture, hosting, testing) and the plan sections are trimmed.
+
+Decisions taken on 2026-10-23 (they replace the open points below where they differ):
+
+- **Manifest:** the add-in only (XML) manifest. Rechecked: the unified manifest is still not supported on Mac ([unified manifest overview](https://learn.microsoft.com/en-us/office/dev/add-ins/develop/unified-manifest-overview)), and converting an XML manifest later gives the add-in a new ID ([convert](https://learn.microsoft.com/en-us/office/dev/add-ins/develop/convert-xml-to-json-manifest): "Change the value of the `<ID>` element to a new random GUID").
+- **Packages:** `@writehand/locales`, `@writehand/session` and `@writehand/ai-connection` (the API key method only; the helper app client stays in the extension until the bridge is designed); `StorageArea` moves to `contracts`. There is no `outlook-html` package: the task pane parses the body HTML with `DOMParser` into a detached document and reads it with `mail-dom`, and the quote and signature markers of mail HTML move from `outlook-web` into `mail-dom` so both Outlook connectors share them.
+- **AI connection:** API keys only (Groq, OpenRouter, OpenAI). The helper app bridge is out of scope.
+- **Hosting:** deferred. Development uses `https://localhost:3000`; the production origin is a build parameter.
+- **Real clients in this milestone:** the new Outlook for Windows. Classic Outlook is not installed on the development machine, so it stays "not verified in a real client" until it is checked.
+- **Office.js** is loaded from the current endpoint, `https://officeapis.public.onecdn.static.microsoft/1/office.js` ([Referencing Office.js](https://learn.microsoft.com/en-us/office/dev/add-ins/develop/referencing-the-javascript-api-for-office-library-from-its-cdn)).
 
 Every platform fact below was checked on learn.microsoft.com or the vendor's own documentation on 2026-10-22; the source is linked next to it. Facts that could not be confirmed from documentation are marked **unconfirmed** and listed under [Risks and open questions](#risks-and-open-questions). Nothing in this document has been verified in a real Outlook client yet; synthetic tests and real-client checks are reported separately.
 
