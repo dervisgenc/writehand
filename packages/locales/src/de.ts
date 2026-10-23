@@ -71,6 +71,7 @@ export const de: ExtensionText = {
       composer: 'Geöffneter Entwurf',
       replyComposer: 'Geöffneter Antwortentwurf',
       receivedMessage: 'Empfangene Nachricht (schreibgeschützt)',
+      newReply: 'Neue Antwort auf diese E-Mail',
     },
     source: {
       textLabel: 'Text',
@@ -159,6 +160,8 @@ export const de: ExtensionText = {
           'Einige Nachrichten sind möglicherweise eingeklappt; ihre Anzahl ließ sich nicht bestimmen.',
         'coverage-unverified':
           'Es werden nur am Bildschirm geöffnete Nachrichten verwendet; der Zugriff auf die ganze Unterhaltung lässt sich nicht prüfen.',
+        'open-item-only':
+          'Es werden nur die geöffnete E-Mail und die darin zitierten früheren Nachrichten verwendet.',
         'virtualized-content': 'Einige Nachrichten sind am Bildschirm möglicherweise noch nicht geladen.',
         'read-limit': 'Einige Nachrichten wurden wegen der Lesegrenze nicht gelesen.',
         'display-order-used':
@@ -196,6 +199,7 @@ export const de: ExtensionText = {
         'replace-selection': 'Markierter Text',
         'replace-body': 'Ihr geschriebener Text (Signatur und frühere Nachrichten bleiben erhalten)',
         'insert-empty': 'Leerer Antwortbereich',
+        'create-reply': 'Eine neue Antwort auf diese E-Mail, als Entwurf geöffnet',
       },
       noTarget: 'Es gibt keinen Entwurf, der direkt geändert werden kann',
       formattingNote:
@@ -205,6 +209,7 @@ export const de: ExtensionText = {
       undo: 'Letzte Anwendung rückgängig machen',
       replaceExistingReply: 'Vorhandenen Antworttext ersetzen',
       useOpenComposer: 'Diesen Antwortentwurf verwenden',
+      createReply: 'Antwort mit diesem Text öffnen',
     },
     status: {
       reading: 'Wird gelesen…',
@@ -248,6 +253,8 @@ export const de: ExtensionText = {
         'Sicheres Schreiben in diesen Editor ließ sich nicht bestätigen. Sie können das Ergebnis kopieren.',
       WRITE_UNCERTAIN:
         'Es ließ sich nicht bestätigen, dass der Text eingefügt wurde. Bitte prüfen Sie den Entwurf; die Aktion wurde nicht wiederholt.',
+      REPLY_TOO_LARGE:
+        'Das Ergebnis ist zu lang, um es als Antwort zu öffnen. Kopieren Sie es und fügen Sie es in eine Antwort ein.',
       UNDO_INVALID:
         'Der Entwurf wurde danach geändert; das automatische Rückgängigmachen wurde zum Schutz Ihres Textes deaktiviert.',
       CLIPBOARD_UNAVAILABLE:

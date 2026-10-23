@@ -60,6 +60,7 @@ export const tr: ExtensionText = {
       composer: 'Açık taslak',
       replyComposer: 'Açık yanıt taslağı',
       receivedMessage: 'Gelen mesaj (salt okunur)',
+      newReply: 'Bu e-postaya yeni yanıt',
     },
     source: {
       textLabel: 'Metin',
@@ -139,6 +140,7 @@ export const tr: ExtensionText = {
         'collapsed-unknown': 'Bazı mesajlar kapalı olabilir; sayıları belirlenemedi.',
         'coverage-unverified':
           'Yalnızca ekranda açık olan mesajlar kullanılıyor; mesajların tamamına erişildiği doğrulanamıyor.',
+        'open-item-only': 'Yalnızca açık e-posta ve içinde alıntılanan önceki mesajlar kullanılıyor.',
         'virtualized-content': 'Ekranda henüz yüklenmemiş mesajlar olabilir.',
         'read-limit': 'Okuma sınırı nedeniyle bazı mesajlar okunmadı.',
         'display-order-used': 'Tarih bilgisi eksik; mesajlar ekrandaki sırayla kullanılıyor.',
@@ -174,6 +176,7 @@ export const tr: ExtensionText = {
         'replace-selection': 'Seçili metin',
         'replace-body': 'Yazdığınız gövde (imza ve önceki yazışma korunur)',
         'insert-empty': 'Boş yanıt alanı',
+        'create-reply': 'Bu e-postaya taslak olarak açılan yeni bir yanıt',
       },
       noTarget: 'Doğrudan uygulanabilecek bir taslak yok',
       formattingNote: 'Sonuç düz metin olarak yerleştirilir; değişen bölümdeki biçim korunmayabilir.',
@@ -182,6 +185,7 @@ export const tr: ExtensionText = {
       undo: 'Son uygulamayı geri al',
       replaceExistingReply: 'Mevcut yanıt metnini değiştir',
       useOpenComposer: 'Bu yanıt taslağını kullan',
+      createReply: 'Bu metinle yanıt aç',
     },
     status: {
       reading: 'Okunuyor…',
@@ -217,6 +221,7 @@ export const tr: ExtensionText = {
       READ_CANCELLED: 'Okuma iptal edildi.',
       WRITE_UNSUPPORTED: 'Bu editöre güvenli yazma doğrulanamadı. Sonucu kopyalayabilirsiniz.',
       WRITE_UNCERTAIN: 'Metnin yerleştiği doğrulanamadı. Lütfen taslağı kontrol edin; işlem tekrarlanmadı.',
+      REPLY_TOO_LARGE: 'Sonuç, yanıt olarak açılamayacak kadar uzun. Kopyalayıp bir yanıta yapıştırın.',
       UNDO_INVALID: 'Taslak sonradan değişti; metninizi korumak için otomatik geri alma kapatıldı.',
       CLIPBOARD_UNAVAILABLE: 'Tarayıcı panoya yazmaya izin vermedi. Metni seçip Ctrl+C ile kopyalayın.',
       EXTENSION_RELOADED: 'Eklenti güncellendi. Devam etmek için sayfayı yenileyin.',

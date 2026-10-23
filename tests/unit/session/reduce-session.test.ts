@@ -61,7 +61,7 @@ describe('reduceSession — revisions and late results', () => {
     expect(reloaded.phase.status).toBe('preview');
     expect(capabilities(reloaded).previewIsStale).toBe(false);
     const request = validateApply(reloaded);
-    expect(request.ok && request.value.target.expectedRevision).toBe(6);
+    expect(request.ok && request.value.target).toMatchObject({ expectedRevision: 6 });
   });
 
   it('marks the preview stale when the source text changes, so it cannot be applied to the draft', () => {
@@ -159,7 +159,7 @@ describe('reduceSession — external changes', () => {
     expect(state.staleReason).toBeNull();
     expect(capabilities(state).applyBlocker).toBeNull();
     const request = validateApply(state);
-    expect(request.ok && request.value.target.composerRef).toEqual(rebound);
+    expect(request.ok && request.value.target).toMatchObject({ composerRef: rebound });
 
     // Rebinding another draft does not affect this work.
     const other = reduceSession(sessionWithPreview(), {
@@ -171,7 +171,7 @@ describe('reduceSession — external changes', () => {
       },
     });
     const otherRequest = validateApply(other);
-    expect(otherRequest.ok && otherRequest.value.target.composerRef).toEqual(composerRef);
+    expect(otherRequest.ok && otherRequest.value.target).toMatchObject({ composerRef });
   });
 
   it('clears the content when the account changes', () => {

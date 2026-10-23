@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import type { ContextSnapshot } from './context';
 import type { TargetLanguage } from './languages';
-import type { ComposerRef } from './mail';
+import type { ComposerRef, ThreadRef } from './mail';
 
 export const OPERATIONS = ['revise', 'translate', 'reply', 'compose'] as const;
 export type Operation = (typeof OPERATIONS)[number];
@@ -21,10 +21,10 @@ export type Tone = (typeof TONES)[number];
 export type SourceOrigin = 'panel' | 'draft' | 'draft-selection' | 'received-message';
 
 /**
- * Where the result is written in the draft. Replacing a selection cannot be
+ * Where the result is written in an open draft. Replacing a selection cannot be
  * represented without a `selectionId`.
  */
-export type ApplyTarget =
+export type ComposerApplyTarget =
   | {
       readonly mode: 'replace-selection';
       readonly composerRef: ComposerRef;
@@ -37,7 +37,27 @@ export type ApplyTarget =
       readonly expectedRevision: number;
     };
 
+/**
+ * Opens a new reply to a received message with the result (an Outlook add-in in read mode).
+ * Nothing existing is overwritten and nothing is sent; the user edits or discards the reply.
+ * It is never derived automatically: the user chooses it in the panel.
+ */
+export interface ReplyApplyTarget {
+  readonly mode: 'create-reply';
+  readonly threadRef: ThreadRef;
+  /** The message replied to; it must still be the open one. */
+  readonly messageKey: string;
+  readonly expectedThreadRevision: number;
+}
+
+/** Where the result is written: an open draft, or a new reply to the open message. */
+export type ApplyTarget = ComposerApplyTarget | ReplyApplyTarget;
+
 export type ApplyMode = ApplyTarget['mode'];
+
+export function isComposerTarget(target: ApplyTarget): target is ComposerApplyTarget {
+  return target.mode !== 'create-reply';
+}
 
 /**
  * A requested change to a finished result (e.g. turn it into a table, shorten it).

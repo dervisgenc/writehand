@@ -105,7 +105,8 @@ export interface AppliedChange {
   readonly requestId: string;
   readonly previewRevision: number;
   readonly outcome: 'applied' | 'uncertain';
-  readonly composerRef: ComposerRef;
+  /** `null` after opening a new reply: the result went into a draft the session does not track. */
+  readonly composerRef: ComposerRef | null;
   readonly undoId: string | null;
   readonly composerRevisionAfter: number | null;
 }

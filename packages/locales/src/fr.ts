@@ -71,6 +71,7 @@ export const fr: ExtensionText = {
       composer: 'Brouillon ouvert',
       replyComposer: 'Brouillon de réponse ouvert',
       receivedMessage: 'Message reçu (lecture seule)',
+      newReply: 'Nouvelle réponse à cet e-mail',
     },
     source: {
       textLabel: 'Texte',
@@ -157,6 +158,7 @@ export const fr: ExtensionText = {
           'Certains messages sont peut-être réduits ; leur nombre n’a pas pu être déterminé.',
         'coverage-unverified':
           'Seuls les messages ouverts à l’écran sont utilisés ; l’accès à toute la conversation ne peut pas être vérifié.',
+        'open-item-only': 'Seuls l’e-mail ouvert et les messages précédents qu’il cite sont utilisés.',
         'virtualized-content': 'Certains messages ne sont peut-être pas encore chargés à l’écran.',
         'read-limit': 'Certains messages n’ont pas été lus en raison de la limite de lecture.',
         'display-order-used':
@@ -193,6 +195,7 @@ export const fr: ExtensionText = {
         'replace-selection': 'Texte sélectionné',
         'replace-body': 'Votre texte rédigé (la signature et les messages précédents sont conservés)',
         'insert-empty': 'Zone de réponse vide',
+        'create-reply': 'Une nouvelle réponse à cet e-mail, ouverte en brouillon',
       },
       noTarget: 'Aucun brouillon ne peut être modifié directement',
       formattingNote:
@@ -202,6 +205,7 @@ export const fr: ExtensionText = {
       undo: 'Annuler la dernière application',
       replaceExistingReply: 'Remplacer le texte de réponse existant',
       useOpenComposer: 'Utiliser ce brouillon de réponse',
+      createReply: 'Ouvrir une réponse avec ce texte',
     },
     status: {
       reading: 'Lecture…',
@@ -243,6 +247,8 @@ export const fr: ExtensionText = {
         'L’écriture sécurisée dans cet éditeur n’a pas pu être vérifiée. Vous pouvez copier le résultat.',
       WRITE_UNCERTAIN:
         'Impossible de vérifier que le texte a été inséré. Vérifiez le brouillon ; l’action n’a pas été répétée.',
+      REPLY_TOO_LARGE:
+        'Le résultat est trop long pour être ouvert comme réponse. Copiez-le et collez-le dans une réponse.',
       UNDO_INVALID:
         'Le brouillon a été modifié ensuite ; l’annulation automatique a été désactivée pour protéger votre texte.',
       CLIPBOARD_UNAVAILABLE:

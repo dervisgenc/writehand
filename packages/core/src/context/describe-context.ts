@@ -38,6 +38,8 @@ export function describeContext(context: ContextSnapshot): ContextNotice[] {
   }
   if (coverage.source === 'visible-dom') {
     notices.push({ kind: 'coverage-unverified' });
+  } else {
+    notices.push({ kind: 'open-item-only' });
   }
 
   const counted: [CountedNoticeKind, number][] = [

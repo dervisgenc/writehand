@@ -25,6 +25,8 @@ export const ERROR_CODES = [
   'READ_CANCELLED',
   'WRITE_UNSUPPORTED',
   'WRITE_UNCERTAIN',
+  /** The result is larger than a new reply opened by the mail app can take (32 KB in Outlook). */
+  'REPLY_TOO_LARGE',
   'UNDO_INVALID',
   'CLIPBOARD_UNAVAILABLE',
   'EXTENSION_RELOADED',

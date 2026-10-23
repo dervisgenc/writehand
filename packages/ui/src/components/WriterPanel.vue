@@ -5,7 +5,7 @@ import { computed, onMounted, useId, useTemplateRef } from 'vue';
 
 import { useUiText } from '../i18n';
 import { inputChecked, inputValue } from '../input-value';
-import type { PanelView, SourceReloadKind } from '../view-model';
+import type { BindTargetMode, PanelView, SourceReloadKind } from '../view-model';
 import AppIcon from './AppIcon.vue';
 import ApplyControls from './ApplyControls.vue';
 import ContextInspector from './ContextInspector.vue';
@@ -43,7 +43,7 @@ const emit = defineEmits<{
   apply: [];
   copy: [];
   undo: [];
-  'bind-target': [mode: 'replace-existing-reply' | 'use-open-composer'];
+  'bind-target': [mode: BindTargetMode];
   retry: [];
   dismiss: [];
 }>();
@@ -72,6 +72,9 @@ const targetLabel = computed(() => {
   const labels = text.value.target;
   if (target.kind === 'composer') {
     return target.isReply ? labels.replyComposer : labels.composer;
+  }
+  if (target.kind === 'new-reply') {
+    return labels.newReply;
   }
   return target.kind === 'received-message' ? labels.receivedMessage : labels.none;
 });

@@ -61,6 +61,7 @@ export const en: ExtensionText = {
       composer: 'Open draft',
       replyComposer: 'Open reply draft',
       receivedMessage: 'Received message (read-only)',
+      newReply: 'New reply to this email',
     },
     source: {
       textLabel: 'Text',
@@ -146,6 +147,7 @@ export const en: ExtensionText = {
         'collapsed-unknown': 'Some messages may be collapsed; their number could not be determined.',
         'coverage-unverified':
           'Only messages open on screen are used; access to the full conversation cannot be verified.',
+        'open-item-only': 'Only the open email and the earlier messages quoted in it are used.',
         'virtualized-content': 'Some messages may not be loaded on screen yet.',
         'read-limit': 'Some messages were not read due to the reading limit.',
         'display-order-used': 'Date information is missing; messages are used in on-screen order.',
@@ -181,6 +183,7 @@ export const en: ExtensionText = {
         'replace-selection': 'Selected text',
         'replace-body': 'Your written body (signature and previous messages are kept)',
         'insert-empty': 'Empty reply area',
+        'create-reply': 'A new reply to this email, opened as a draft',
       },
       noTarget: 'No draft can be changed directly',
       formattingNote: 'The result is inserted as plain text; formatting in the changed part may be lost.',
@@ -189,6 +192,7 @@ export const en: ExtensionText = {
       undo: 'Undo last apply',
       replaceExistingReply: 'Replace the existing reply text',
       useOpenComposer: 'Use this reply draft',
+      createReply: 'Open a reply with this text',
     },
     status: {
       reading: 'Reading…',
@@ -225,6 +229,8 @@ export const en: ExtensionText = {
       WRITE_UNSUPPORTED: 'Safe writing to this editor could not be verified. You can copy the result.',
       WRITE_UNCERTAIN:
         'Could not verify that the text was placed. Please check the draft; the action was not repeated.',
+      REPLY_TOO_LARGE:
+        'The result is too long to open as a reply. Copy it and paste it into a reply instead.',
       UNDO_INVALID: 'The draft changed afterwards; automatic undo was disabled to protect your text.',
       CLIPBOARD_UNAVAILABLE:
         'The browser did not allow writing to the clipboard. Select the text and press Ctrl+C.',

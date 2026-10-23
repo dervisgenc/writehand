@@ -1,4 +1,5 @@
 import {
+  isComposerTarget,
   isInstructionOperation,
   isSameComposer,
   isSameScope,
@@ -8,6 +9,7 @@ import {
   type ErrorField,
   type MessageSnapshot,
   type PageState,
+  pageFeatures,
 } from '@writehand/contracts';
 import {
   describeContext,
@@ -76,7 +78,7 @@ export function sessionComposer(state: SessionState, page: PageState): ComposerR
   if (binding.kind === 'draft' || binding.kind === 'draft-selection') {
     return binding.composerRef;
   }
-  if (state.explicitTarget !== null) {
+  if (state.explicitTarget !== null && isComposerTarget(state.explicitTarget)) {
     return state.explicitTarget.composerRef;
   }
   const thread = state.thread;
@@ -91,10 +93,13 @@ export function sessionComposer(state: SessionState, page: PageState): ComposerR
 }
 
 function targetView(state: SessionState, capabilities: SessionCapabilities): TargetView {
+  const target = capabilities.applyTarget;
+  if (target !== null && !isComposerTarget(target)) {
+    return { kind: 'new-reply' };
+  }
   if (state.binding.kind === 'received-message') {
     return { kind: 'received-message' };
   }
-  const target = capabilities.applyTarget;
   return target === null
     ? { kind: 'none' }
     : { kind: 'composer', isReply: target.composerRef.threadKey !== null };
@@ -244,7 +249,7 @@ function statusView(state: SessionState, ui: TransientUiState): StatusView {
 }
 
 function applyView(input: PanelViewInput, composer: ComposerRef | null): ApplyView {
-  const { state, capabilities, ui } = input;
+  const { state, capabilities, ui, page } = input;
   const { binding } = state;
   // Text written from an instruction (reply or new email) replaces a non-empty draft only after confirmation.
   const isReply = isInstructionOperation(state.form.operation);
@@ -283,6 +288,16 @@ function applyView(input: PanelViewInput, composer: ComposerRef | null): ApplyVi
       binding.kind === 'panel' &&
       composer !== null &&
       ui.replyReplaceComposer === null,
+    // Read mode in an Office add-in: no draft is open, but a new reply to the open email can be.
+    canCreateReply:
+      pageFeatures(page).createReply &&
+      capabilities.applyTarget === null &&
+      composer === null &&
+      state.staleReason === null &&
+      state.thread !== null &&
+      state.threadSnapshot !== null &&
+      page.activeThread !== null &&
+      isSameThread(state.thread, page.activeThread),
   };
 }
 
@@ -305,6 +320,7 @@ export function toPanelView(input: PanelViewInput): PanelView {
   const { state, capabilities, page, ui, history } = input;
   const { form, binding, phase } = state;
   const composer = sessionComposer(state, page);
+  const features = pageFeatures(page);
   const fieldErrors: Partial<Record<ErrorField, ErrorCode>> = {};
   for (const error of state.fieldErrors) {
     if (error.field !== undefined && fieldErrors[error.field] === undefined) {
@@ -332,7 +348,8 @@ export function toPanelView(input: PanelViewInput): PanelView {
       pendingReplace: ui.pendingReplace,
       canLoadDraft: composer !== null,
       canLoadSelection: composer !== null && !isInstructionOperation(form.operation),
-      canLoadReceivedSelection: state.thread !== null && form.operation === 'translate',
+      canLoadReceivedSelection:
+        features.receivedSelection && state.thread !== null && form.operation === 'translate',
       isReading: phase.status === 'reading',
     },
     options: {
@@ -368,7 +385,10 @@ export function toPanelView(input: PanelViewInput): PanelView {
         !capabilities.isBusy &&
         capabilities.prepareBlocker === null,
       // Table, list and chart are offered only for results written to the whole draft.
-      rich: capabilities.applyTarget?.mode !== 'replace-selection' && binding.kind !== 'received-message',
+      rich:
+        features.richContent &&
+        capabilities.applyTarget?.mode !== 'replace-selection' &&
+        binding.kind !== 'received-message',
     },
     apply: applyView(input, composer),
     status: statusView(state, ui),

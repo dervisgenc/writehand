@@ -1,12 +1,13 @@
 import {
   appError,
   err,
+  isComposerTarget,
   isSameScope,
   ok,
   type AppError,
   type ApplyOutcome,
   type ApplyRequest,
-  type ApplyTarget,
+  type ComposerApplyTarget,
   type ComposerRef,
   type ErrorCode,
   type MailScope,
@@ -56,7 +57,7 @@ function crossesStructure(range: Range): boolean {
 }
 
 function planWrite(
-  target: ApplyTarget,
+  target: ComposerApplyTarget,
   anatomy: ComposerAnatomy,
   deps: WriteDependencies,
 ): Result<WritePlan, AppError> {
@@ -108,10 +109,15 @@ function richComparable(text: string): string {
  * There is no await or network call between the last check and the write.
  */
 export async function applyText(request: ApplyRequest, deps: WriteDependencies): Promise<ApplyOutcome> {
-  if (request.text.trim().length > 0) {
-    await focusEditor(request.target.composerRef, deps);
+  const { target } = request;
+  // A web mail page has no reply the connector could open; that target belongs to Office add-ins.
+  if (!isComposerTarget(target)) {
+    return rejected('WRITE_UNSUPPORTED');
   }
-  return applyFocused(request, deps);
+  if (request.text.trim().length > 0) {
+    await focusEditor(target.composerRef, deps);
+  }
+  return applyFocused(request, target, deps);
 }
 
 /**
@@ -135,8 +141,12 @@ export async function focusEditor(ref: ComposerRef, deps: WriteDependencies): Pr
   await deps.settle();
 }
 
-async function applyFocused(request: ApplyRequest, deps: WriteDependencies): Promise<ApplyOutcome> {
-  const { target, text, rich, applyOperationId } = request;
+async function applyFocused(
+  request: ApplyRequest,
+  target: ComposerApplyTarget,
+  deps: WriteDependencies,
+): Promise<ApplyOutcome> {
+  const { text, rich, applyOperationId } = request;
 
   const previous = deps.attempts.get(applyOperationId);
   if (previous === 'applied' || previous === 'uncertain') {

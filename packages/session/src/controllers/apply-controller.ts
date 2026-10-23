@@ -1,6 +1,7 @@
 import {
   appError,
   isSameThread,
+  pageFeatures,
   type AppError,
   type ApplyTarget,
   type ComposerRef,
@@ -31,6 +32,11 @@ export interface ApplyController {
   copy(): Promise<Result<void, AppError>>;
   /** Binds a reply preview without a target to an open draft in the same conversation. */
   bindComposer(composer: ComposerRef, allowReplace: boolean): Promise<BindResult>;
+  /**
+   * Binds the result to a new reply to the open email, where the mail app can open one (an
+   * Office add-in in read mode). Nothing is written until `apply`.
+   */
+  bindReply(): BindResult;
 }
 
 /**
@@ -115,6 +121,38 @@ export function createApplyController(deps: ApplyControllerDependencies): ApplyC
         return { status: 'failed', error: appError('WRITE_UNSUPPORTED') };
       }
       store.dispatch({ type: 'target-bound', target });
+      return { status: 'bound' };
+    },
+
+    bindReply() {
+      const state = store.getState();
+      const page = connector.getPageState();
+      if (!pageFeatures(page).createReply) {
+        return { status: 'failed', error: appError('WRITE_UNSUPPORTED') };
+      }
+      const snapshot = state.threadSnapshot;
+      // The reply goes to the email on screen, which must be the one the result was made for.
+      if (
+        state.thread === null ||
+        snapshot === null ||
+        page.activeThread === null ||
+        !isSameThread(state.thread, page.activeThread)
+      ) {
+        return { status: 'failed', error: appError('THREAD_CHANGED') };
+      }
+      const messageKey = state.form.replyTargetKey ?? snapshot.activeMessageKey;
+      if (messageKey === null) {
+        return { status: 'failed', error: appError('TARGET_MISSING') };
+      }
+      store.dispatch({
+        type: 'target-bound',
+        target: {
+          mode: 'create-reply',
+          threadRef: state.thread,
+          messageKey,
+          expectedThreadRevision: snapshot.revision,
+        },
+      });
       return { status: 'bound' };
     },
   };

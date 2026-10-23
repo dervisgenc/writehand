@@ -25,7 +25,11 @@ export type QuickActionRequest =
 export type TargetView =
   | { readonly kind: 'none' }
   | { readonly kind: 'composer'; readonly isReply: boolean }
-  | { readonly kind: 'received-message' };
+  | { readonly kind: 'received-message' }
+  | { readonly kind: 'new-reply' };
+
+/** How the user picks a place for a result that has none yet. */
+export type BindTargetMode = 'replace-existing-reply' | 'use-open-composer' | 'create-reply';
 
 export type SourceReloadKind = 'draft' | 'selection' | 'received-message';
 
@@ -106,6 +110,8 @@ export interface ApplyView {
   readonly canReplaceExistingReply: boolean;
   /** Option to bind a preview without a target to the open reply draft. */
   readonly canUseOpenComposer: boolean;
+  /** Option to open a new reply to the open email with the result (no draft is open). */
+  readonly canCreateReply: boolean;
 }
 
 export type StatusView =

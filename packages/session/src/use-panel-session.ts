@@ -8,7 +8,7 @@ import {
   type Tone,
 } from '@writehand/contracts';
 import { ACTION_LIMITS, deriveCapabilities } from '@writehand/core';
-import type { SourceReloadKind } from '@writehand/ui';
+import type { BindTargetMode, SourceReloadKind } from '@writehand/ui';
 import { computed, onScopeDispose, shallowRef } from 'vue';
 
 import type { ActionController } from './controllers/action-controller';
@@ -155,7 +155,17 @@ export function usePanelSession(deps: PanelSessionDependencies) {
         result.ok ? { kind: 'success', message: 'copied' } : { kind: 'error', code: result.error.code },
       );
     },
-    bindTarget: async (mode: 'replace-existing-reply' | 'use-open-composer') => {
+    bindTarget: async (mode: BindTargetMode) => {
+      if (mode === 'create-reply') {
+        // Choosing the new reply is the approval: it opens at once with the previewed result.
+        const bound = applier.bindReply();
+        if (bound.status === 'failed') {
+          showNotice({ kind: 'error', code: bound.error.code });
+          return;
+        }
+        await applier.apply();
+        return;
+      }
       const target = ui.value.replyReplaceComposer ?? composer();
       if (target === null) {
         return;

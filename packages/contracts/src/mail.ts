@@ -48,10 +48,12 @@ export interface MessageSnapshot {
 
 /**
  * Reading from the DOM does not prove access to the whole mail history, so there is
- * deliberately no `complete` coverage value.
+ * deliberately no `complete` coverage value. `visible-dom`: the messages a web mail page shows;
+ * `item-body`: only the open item (the open email, or the earlier mail quoted in a draft), as
+ * an Office add-in reads it.
  */
 export interface ContextCoverage {
-  readonly source: 'visible-dom';
+  readonly source: 'visible-dom' | 'item-body';
   readonly status: 'partial' | 'unknown';
   readonly readableMessageCount: number;
   readonly knownUnreadableMessageCount: number | null;

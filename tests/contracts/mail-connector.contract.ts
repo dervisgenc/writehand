@@ -1,4 +1,10 @@
-import type { ComposerRef, MailConnector, MailEvent, ThreadRef } from '@writehand/contracts';
+import {
+  pageFeatures,
+  type ComposerRef,
+  type MailConnector,
+  type MailEvent,
+  type ThreadRef,
+} from '@writehand/contracts';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 /**
@@ -87,8 +93,28 @@ export function describeMailConnectorContract(name: string, setup: () => Contrac
       const snapshot = await connector.readThread(thread, notAborted);
       if (!snapshot.ok) throw new Error(snapshot.error.code);
       expect(snapshot.value.ref).toEqual(thread);
-      expect(snapshot.value.coverage.source).toBe('visible-dom');
+      expect(['visible-dom', 'item-body']).toContain(snapshot.value.coverage.source);
       expect(['partial', 'unknown']).toContain(snapshot.value.coverage.status);
+    });
+
+    it('does not offer a new reply while a draft is open, and refuses that target without writing', async () => {
+      expect(pageFeatures(connector.getPageState()).createReply).toBe(false);
+      const before = await connector.readComposer(firstComposer());
+      const outcome = await connector.applyText({
+        applyOperationId: 'apply-reply',
+        target: {
+          mode: 'create-reply',
+          threadRef: activeThread(),
+          messageKey: 'm1',
+          expectedThreadRevision: 1,
+        },
+        text: 'Yeni yanıt',
+      });
+      expect(outcome).toEqual({
+        status: 'rejected',
+        error: expect.objectContaining({ code: 'WRITE_UNSUPPORTED' }),
+      });
+      expect(await connector.readComposer(firstComposer())).toEqual(before);
     });
 
     it('returns TARGET_MISSING for an unknown draft', async () => {

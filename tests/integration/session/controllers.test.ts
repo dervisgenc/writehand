@@ -532,3 +532,92 @@ describe('Panel flow (with a fake connector)', () => {
     });
   });
 });
+
+describe('Read mode in an Office add-in (no draft open)', () => {
+  let current: ReturnType<typeof setup> | null = null;
+  afterEach(() => {
+    current?.actions.dispose();
+    current?.panel.dispose();
+    current?.history.dispose();
+    current = null;
+  });
+
+  /** The open email in read mode, as the Outlook add-in reports it. */
+  function readMode(features = { receivedSelection: false, richContent: true, createReply: true }) {
+    current = setup();
+    current.connector.hasComposer = false;
+    current.connector.features = features;
+    return current;
+  }
+
+  async function replyPreview(session: ReturnType<typeof setup>) {
+    const { panel, store, connector, actions } = session;
+    panel.open({ origin: 'thread-launcher', thread: connector.thread! });
+    await tick();
+    store.dispatch({ type: 'form-changed', changes: { instruction: 'Kibarca teşekkür et' } });
+    await actions.prepare();
+  }
+
+  it('offers a new reply with the result and opens it once the user chooses it', async () => {
+    const session = readMode();
+    const { applier, connector, store, view } = session;
+    await replyPreview(session);
+
+    expect(view().apply).toMatchObject({ mode: null, canApply: false, canCreateReply: true });
+    expect(view().target).toEqual({ kind: 'none' });
+
+    expect(applier.bindReply()).toEqual({ status: 'bound' });
+    expect(view().target).toEqual({ kind: 'new-reply' });
+    expect(view().apply).toMatchObject({ mode: 'create-reply', canApply: true, canCreateReply: false });
+
+    await applier.apply();
+    expect(connector.applied).toHaveLength(1);
+    expect(connector.applied[0]?.target).toEqual({
+      mode: 'create-reply',
+      threadRef: connector.thread,
+      messageKey: 'm3',
+      expectedThreadRevision: connector.threadSnapshot.revision,
+    });
+    expect(store.getState().phase.status).toBe('applied');
+    expect(view().apply).toMatchObject({ canApply: false, canUndo: false, blocker: null });
+
+    // The same result never opens a second reply.
+    await applier.apply();
+    expect(connector.applied).toHaveLength(1);
+  });
+
+  it('does not offer a new reply where the page cannot open one', async () => {
+    const session = readMode({ receivedSelection: true, richContent: true, createReply: false });
+    await replyPreview(session);
+
+    expect(session.view().apply.canCreateReply).toBe(false);
+    expect(session.applier.bindReply()).toEqual({
+      status: 'failed',
+      error: expect.objectContaining({ code: 'WRITE_UNSUPPORTED' }),
+    });
+    expect(session.connector.applied).toEqual([]);
+  });
+
+  it('does not open a reply to another email after the user switched to it', async () => {
+    const session = readMode();
+    const { applier, connector, store } = session;
+    await replyPreview(session);
+    applier.bindReply();
+
+    switchToInvoice(connector);
+    await applier.apply();
+    expect(connector.applied).toEqual([]);
+    // The session follows the new email; the earlier result and its reply target are gone.
+    expect(store.getState()).toMatchObject({ thread: threadB, preview: null, explicitTarget: null });
+  });
+
+  it('hides what the page cannot do: selections in received messages and formatted refinements', async () => {
+    const session = readMode({ receivedSelection: false, richContent: false, createReply: true });
+    const { store, view } = session;
+    await replyPreview(session);
+    expect(view().refine.rich).toBe(false);
+
+    store.dispatch({ type: 'form-changed', changes: { operation: 'translate' } });
+    expect(view().source.canLoadReceivedSelection).toBe(false);
+  });
+});

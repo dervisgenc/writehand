@@ -71,6 +71,7 @@ export const es: ExtensionText = {
       composer: 'Borrador abierto',
       replyComposer: 'Borrador de respuesta abierto',
       receivedMessage: 'Mensaje recibido (solo lectura)',
+      newReply: 'Nueva respuesta a este correo',
     },
     source: {
       textLabel: 'Texto',
@@ -155,6 +156,7 @@ export const es: ExtensionText = {
         'collapsed-unknown': 'Puede que algunos mensajes estén contraídos; no se pudo determinar cuántos.',
         'coverage-unverified':
           'Solo se usan los mensajes abiertos en la pantalla; no se puede comprobar el acceso a toda la conversación.',
+        'open-item-only': 'Solo se usan el correo abierto y los mensajes anteriores citados en él.',
         'virtualized-content': 'Puede que algunos mensajes aún no se hayan cargado en la pantalla.',
         'read-limit': 'Algunos mensajes no se leyeron por el límite de lectura.',
         'display-order-used':
@@ -191,6 +193,7 @@ export const es: ExtensionText = {
         'replace-selection': 'Texto seleccionado',
         'replace-body': 'El texto que escribiste (la firma y los mensajes anteriores se conservan)',
         'insert-empty': 'Área de respuesta vacía',
+        'create-reply': 'Una nueva respuesta a este correo, abierta como borrador',
       },
       noTarget: 'No hay ningún borrador que se pueda cambiar directamente',
       formattingNote:
@@ -200,6 +203,7 @@ export const es: ExtensionText = {
       undo: 'Deshacer la última aplicación',
       replaceExistingReply: 'Reemplazar el texto de respuesta existente',
       useOpenComposer: 'Usar este borrador de respuesta',
+      createReply: 'Abrir una respuesta con este texto',
     },
     status: {
       reading: 'Leyendo…',
@@ -238,6 +242,8 @@ export const es: ExtensionText = {
         'No se pudo comprobar que escribir en este editor sea seguro. Puedes copiar el resultado.',
       WRITE_UNCERTAIN:
         'No se pudo comprobar que el texto se insertara. Revisa el borrador; la acción no se repitió.',
+      REPLY_TOO_LARGE:
+        'El resultado es demasiado largo para abrirlo como respuesta. Cópialo y pégalo en una respuesta.',
       UNDO_INVALID:
         'El borrador cambió después; se desactivó la acción de deshacer automática para proteger tu texto.',
       CLIPBOARD_UNAVAILABLE:

@@ -68,6 +68,8 @@ export interface UiText {
     readonly composer: string;
     readonly replyComposer: string;
     readonly receivedMessage: string;
+    /** A new reply to the open email, opened by the mail app (Outlook add-in in read mode). */
+    readonly newReply: string;
   };
   readonly source: {
     readonly textLabel: string;
@@ -153,6 +155,8 @@ export interface UiText {
     readonly undo: string;
     readonly replaceExistingReply: string;
     readonly useOpenComposer: string;
+    /** Opens a new reply to the open email with the result. */
+    readonly createReply: string;
   };
   readonly status: {
     readonly reading: string;

@@ -1,12 +1,14 @@
 import {
   appError,
   err,
+  isComposerTarget,
   ok,
   type ApplyRequest,
   type ComposerRef,
   type MailConnector,
   type MailEvent,
   type MailScope,
+  type PageFeatures,
   type PageState,
   type ThreadRef,
   type ThreadSnapshot,
@@ -30,9 +32,18 @@ export class FakeConnector implements MailConnector {
   selection: { start: number; end: number } | null = { start: 0, end: 8 };
   threadSnapshot: ThreadSnapshot = meetingThread();
   readDelayMs = 0;
+  /** Read mode in an Office add-in: no draft is open. */
+  hasComposer = true;
+  features: PageFeatures | undefined = undefined;
 
   getPageState(): PageState {
-    return { support: 'ready', scope: this.scope, activeThread: this.thread, composers: [this.composer] };
+    return {
+      support: 'ready',
+      scope: this.scope,
+      activeThread: this.thread,
+      composers: this.hasComposer ? [this.composer] : [],
+      ...(this.features === undefined ? {} : { features: this.features }),
+    };
   }
 
   async readThread(ref: ThreadRef, signal: { aborted: boolean }) {
@@ -101,6 +112,13 @@ export class FakeConnector implements MailConnector {
   }
 
   async applyText(request: ApplyRequest) {
+    if (!isComposerTarget(request.target)) {
+      if (this.features?.createReply !== true) {
+        return { status: 'rejected' as const, error: appError('WRITE_UNSUPPORTED') };
+      }
+      this.applied.push(request);
+      return { status: 'applied' as const, composerRevision: null, undoId: null };
+    }
     if (request.target.expectedRevision !== this.revision) {
       return { status: 'rejected' as const, error: appError('TARGET_CHANGED') };
     }
