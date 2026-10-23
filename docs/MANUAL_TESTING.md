@@ -1,6 +1,6 @@
 # Manual testing
 
-This is the release checklist for real browsers, real Outlook accounts and clean machines. The automated tests run only on synthetic pages; they do not show that Writehand works in real Outlook on the web or that the helper app installs cleanly on a user's computer.
+This is the release checklist for real browsers, real Outlook accounts and clean machines. The automated tests run only on synthetic pages; they do not show that Writehand works in real Outlook on the web or that the helper app installs cleanly on a user's computer. The Outlook add-in has its own checklist and record in [section 7](#7-outlook-add-in).
 
 See also: [Releasing](./RELEASING.md), [Helper app](./HELPER_APP.md), [Development guide](./DEVELOPMENT.md#outlook-on-the-web-selectors).
 
@@ -187,3 +187,57 @@ Gmail support is new. Reading a conversation and finding a compose window are ve
 - [ ] Install again, then uninstall with `--delete-data` (PowerShell: `-DeleteData`): the credentials folder is removed too.
 - [ ] Windows: a few seconds after uninstalling, `%LOCALAPPDATA%\Programs\writehand` is gone and `reg query` finds none of the four keys.
 - [ ] Remove the extension from the browser.
+
+## 7. Outlook add-in
+
+The add-in's automated tests run against an in-memory Office.js ([Outlook add-in → Automated tests](./OUTLOOK_ADDIN.md#automated-tests)); only this checklist shows what a real Outlook does. Check each Outlook application separately: the new Outlook for Windows, classic Outlook for Windows and Outlook on the web differ in their body HTML, their webview and their requirement sets. The [rules](#rules) above apply; a check that was not done in a client is not supported there.
+
+**Setup.** Install the certificate, build, serve and sideload as in [Outlook add-in → Development on Windows](./OUTLOOK_ADDIN.md#development-on-windows). Use a Microsoft 365 work or school mailbox. Two builds are useful:
+
+- `pnpm addin:build:sample` replaces the three providers with local stand-ins: any key of ten or more characters connects, every result is a labeled sample of its input (for example "… (revised sample)"), and nothing leaves the computer. Use it to check what Outlook does without an AI account and without sending any mail text to a provider.
+- `pnpm addin:build:local` is what users get. Use it with a real key for the provider checks.
+
+**Automating the checks.** The new Outlook's webviews cannot be reached with a debugging port (`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` is ignored), so a script has to work through Windows UI Automation. In read mode, never list the pane's texts or checkbox names: the context preview shows the open email's sender and text. Query controls by their fixed names only, and report counts and yes/no answers. Set text fields through UI Automation and read them back instead of sending keystrokes, which can land in another field. Check colors by sampling a few pixels of the pane, not by saving screenshots.
+
+**Checklist** (per client):
+
+- [ ] **Install:** **Add from File** accepts `manifest.xml`; after restarting Outlook, **Writehand** is under **Apps** in a new message and on a received message.
+- [ ] **First run:** the pane loads without a certificate or Content Security Policy error. Connect a key: "… key saved, encrypted in this Outlook app.", the status is **Ready** and the key field is cleared. **Revise the sample** works; **Start** opens the panel, which says which key it uses.
+- [ ] **Key after restart:** close and reopen Outlook; the panel still uses the key.
+- [ ] **New message:** the target is the open draft (not a reply) and the operations are **Write**, **Revise** and **Translate**.
+- [ ] **Empty draft:** **Write** into an empty new message; the text appears once, above the signature if there is one.
+- [ ] **Whole body:** in a new message without a signature, **Revise** the whole text and apply it; **Undo last apply** restores it. Note any notification Outlook shows.
+- [ ] **Selection:** select a few words in a draft, **Take selected text**, **Revise**, then click **Apply to draft** in the pane. Only the selection changes; nothing is inserted at the top of the body (risk 1 in the guide).
+- [ ] **Table:** **Change the result → Make a table**, then apply it to a new message: the table keeps its borders, header shading and padding (risk 2).
+- [ ] **Read mode:** open a received email and the pane from **Apps**. **Revise** a made-up sentence (conversation context off), then **Open a reply with this text**: a reply draft opens with the text above the quote, and its subject is a reply's. Discard the draft.
+- [ ] **Pinning:** pin the pane on a received email and switch to two other emails: the pane stays open, the context follows each email, and a result made for the first email does not offer to reply to the second.
+- [ ] **Theme:** switch Outlook between light and dark (**Settings → General → Appearance**): the pane follows without being reopened. Switch back.
+- [ ] **Copy:** **Copy** puts the result on the clipboard and says "Copied to clipboard." (Save and restore the clipboard if a script does this.)
+- [ ] **Provider** (real key): connecting lists the provider's models; a generation succeeds; the provider is the only host besides the add-in's own and Microsoft's.
+- [ ] **Pop-out draft:** open the pane in a draft in its own window and write once.
+- [ ] **Nothing sent:** **Sent Items** holds none of the test drafts; discard every test draft and reply.
+
+Record each run:
+
+| Date | Client and version | Webview | Windows | Account | Language | Build | Provider | Checks passed | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-23 | New Outlook 1.2026.1013.100 | WebView2 155.0.4283.62 | 11 Pro 10.0.26200 | Microsoft 365 work or school | English | `addin:build:sample` from `https://localhost:3000` | Sample (no network) | Install, first run, key after restart, new message, empty draft, whole body and undo, selection, table, read mode, pinning, theme, copy, nothing sent | See below |
+
+**Run of 2026-10-23, new Outlook for Windows.** Driven by a UI Automation script; one cropped screenshot of a made-up test draft was viewed for the table check and deleted.
+
+Verified in this client:
+
+- The manifest was accepted by **Add from File** in Outlook on the web. **Writehand** appeared under **Apps** in new messages after the first restart, and on received emails by the next restart (not checked in between).
+- The pane loaded from `https://localhost:3000` without a loopback exemption, and the Content Security Policy did not block Office.js.
+- The sample key connected and was cleared from the field; after closing and reopening Outlook the panel still used it.
+- **The new Outlook gives a new message a conversation ID before it is saved**, unlike what the reference says; the pane took every new message for a reply. Fixed by asking for the compose type first, then checked again: a new message is a new message.
+- `prependAsync` wrote into an empty draft once; `setAsync` replaced a new message's body and **Undo last apply** restored it; Outlook showed no notification.
+- A selection was replaced in place after clicking **Apply to draft** in the pane; nothing went to the top of the body (risk 1 did not occur).
+- A table written into a draft kept its inline styles: borders, header shading and padding (risk 2 did not occur in this client).
+- **Open a reply with this text** opened a reply draft in its own window, starting with the result, with a reply subject; it was closed and discarded unsent.
+- A pinned pane stayed open while switching between received emails and read each one; the reply option for the previous email's result was gone. Switching to a draft's tab closed the pane (compose and read panes are separate), and closing the pane by hand unpinned it.
+- The pane followed Outlook's theme without reopening: background `#FAF9F8` in light and `#212121` in dark, Office's colors rather than Writehand's defaults. The setting was switched back to light.
+- **The Clipboard API is refused in the add-in's frame**, even on a real mouse click. Fixed by falling back to the copy command; then **Copy** put the result on the clipboard and the pane said "Copied to clipboard.".
+- **Sent Items** held none of the test items afterwards; the three test drafts and the reply draft were discarded (they are in **Deleted Items**).
+
+Not checked in this run: a real provider (connecting a key, models, a generation, CORS from the pane), **Draft reply** with a received email as context, translation, a pop-out draft with the pane in it, a reply draft's quote and signature boundary, a non-empty reply draft, Outlook.com accounts, other interface languages, classic Outlook for Windows (not installed) and Outlook on the web.
