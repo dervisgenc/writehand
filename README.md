@@ -122,7 +122,8 @@ packages/ui/                   Vue panel, toolbar, result card, settings and set
 packages/mail-connectors/
   outlook-web/                 Reads, observes and writes Outlook on the web pages in a controlled way
   gmail-web/                   Reads, observes and writes Gmail pages in a controlled way
-  mail-dom/                    What the web mail connectors share: text extraction, drafts, selection, writing, undo
+  outlook-addin/               Reads and writes the open Outlook item through Office.js (Outlook add-in)
+  mail-dom/                    What the mail connectors share: text extraction, drafts, selection, writing, undo
 tests/                         Unit, contract, integration and end-to-end tests with synthetic samples
 scripts/store-assets/          Demo mailbox and scripts that produce the store images and the demo video
 assets/brand/                  Logo sources (SVG)

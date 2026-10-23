@@ -175,6 +175,9 @@ importers:
       '@types/node':
         specifier: ^22.20.5
         version: 22.20.5
+      '@types/office-js':
+        specifier: 1.0.613
+        version: 1.0.613
       '@vitejs/plugin-vue':
         specifier: ^6.0.10
         version: 6.0.10(vite@8.3.4(@types/node@22.20.5)(jiti@2.7.0))(vue@3.5.43(typescript@6.0.3))
@@ -211,6 +214,9 @@ importers:
       '@writehand/mail-dom':
         specifier: workspace:*
         version: link:packages/mail-connectors/mail-dom
+      '@writehand/outlook-addin':
+        specifier: workspace:*
+        version: link:packages/mail-connectors/outlook-addin
       '@writehand/outlook-web':
         specifier: workspace:*
         version: link:packages/mail-connectors/outlook-web
@@ -420,6 +426,19 @@ importers:
       '@writehand/contracts':
         specifier: workspace:*
         version: link:../../contracts
+
+  packages/mail-connectors/outlook-addin:
+    dependencies:
+      '@writehand/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@writehand/mail-dom':
+        specifier: workspace:*
+        version: link:../mail-dom
+    devDependencies:
+      '@types/office-js':
+        specifier: 1.0.613
+        version: 1.0.613
 
   packages/mail-connectors/outlook-web:
     dependencies:
@@ -1018,6 +1037,9 @@ packages:
 
   '@types/node@26.6.5':
     resolution: {integrity: sha512-uMzsv9stDdofIZBx4UGh4Z9ZgXnGC9seRDscilBcTHAeOFk67MZg/k9bWVfO+bk4qZmG+l52hRnLwUiH2LnJTg==}
+
+  '@types/office-js@1.0.613':
+    resolution: {integrity: sha512-SYUWvTEqpkcAIFxtf0ThRVXN6cw4r7XleXl3ZEEdrgLnqFyUD251iG6COQ9VAsI3G44LYrQSSz1+4Ctgoqiiww==}
 
   '@types/proper-lockfile@4.1.4':
     resolution: {integrity: sha512-uo2ABllncSqg9F1D4nugVl9v93RmjxF6LJzQLMLDdPaXCUIDPeOJ21Gbqi43xNKzBi/WQ0Q0dICqufzQbMjipQ==}
@@ -3506,6 +3528,8 @@ snapshots:
   '@types/node@26.6.5':
     dependencies:
       undici-types: 8.9.0
+
+  '@types/office-js@1.0.613': {}
 
   '@types/proper-lockfile@4.1.4':
     dependencies:

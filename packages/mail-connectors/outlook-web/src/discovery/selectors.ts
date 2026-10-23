@@ -17,6 +17,8 @@
  */
 
 import {
+  MAIL_QUOTE_START_SELECTORS,
+  MAIL_SIGNATURE_SELECTORS,
   selectorQueries,
   type EvidenceLevel,
   type SelectorDefinition as GenericSelectorDefinition,
@@ -172,24 +174,11 @@ export const OUTLOOK_SELECTORS = {
   ]),
 
   /**
-   * Where earlier mail starts inside a message or editor. When displaying mail,
-   * Outlook prefixes ids in the email HTML with `x_` (`x_x_` inside a quote), so
-   * suffix matching is used.
+   * Where earlier mail starts inside a message or editor. The markers belong to the email
+   * HTML, so they are shared with the Office add-in (`mail-dom/src/mail-markup.ts`).
    */
   quoteStart: verified(
-    [
-      '[id$="divRplyFwdMsg"]',
-      '[id$="appendonsend"]',
-      '[id*="OLK_SRC_BODY_SECTION"]',
-      '[class*="mail-editor-reference-message-container"]',
-      '.gmail_quote',
-      '.x_gmail_quote',
-      'blockquote[type="cite"]',
-      '.moz-cite-prefix',
-      '.x_moz-cite-prefix',
-      '.yahoo_quoted',
-      '.x_yahoo_quoted',
-    ],
+    MAIL_QUOTE_START_SELECTORS,
     'high',
     'Outlook reply structure: #Signature → #appendonsend → hr → #divRplyFwdMsg. [id$="divRplyFwdMsg"] and [id$="appendonsend"] verified on a received message; the rest are candidates.',
     [WORK_EN_FIREFOX_SELECTED_MESSAGE],
@@ -197,14 +186,7 @@ export const OUTLOOK_SELECTORS = {
 
   /** Signature block. Words like "Thanks" alone do not count as a signature. */
   signature: candidate(
-    [
-      '#Signature',
-      '[id$="x_Signature"]',
-      '[id$="ms-outlook-mobile-signature"]',
-      '.ms-outlook-signature',
-      '.gmail_signature',
-      '.x_gmail_signature',
-    ],
+    MAIL_SIGNATURE_SELECTORS,
     'high',
     '#Signature usually comes with the `elementToProof` class.',
   ),

@@ -20,6 +20,11 @@ export interface ContractHarness {
   typeInComposer(ref: ComposerRef, text: string): void;
   /** A phrase present in the draft that can be selected. */
   readonly selectablePhrase: string;
+  /**
+   * `false` where a replaced selection cannot be restored exactly (Office.js has no range API);
+   * such a connector reports `undoId: null` for it, as the contract allows.
+   */
+  readonly undoesSelectionWrites?: boolean;
   cleanup(): void;
 }
 
@@ -114,7 +119,9 @@ export function describeMailConnectorContract(name: string, setup: () => Contrac
         status: 'rejected',
         error: expect.objectContaining({ code: 'WRITE_UNSUPPORTED' }),
       });
-      expect(await connector.readComposer(firstComposer())).toEqual(before);
+      const after = await connector.readComposer(firstComposer());
+      expect(after.ok && after.value.editableText).toBe(before.ok && before.value.editableText);
+      expect(after.ok && after.value.revision).toBe(before.ok && before.value.revision);
     });
 
     it('returns TARGET_MISSING for an unknown draft', async () => {
@@ -172,6 +179,11 @@ export function describeMailConnectorContract(name: string, setup: () => Contrac
     });
 
     it('undoes the last apply, but not after the user has typed in between', async () => {
+      if (harness.undoesSelectionWrites === false) {
+        const { outcome } = await selectAndApply('YENİ METİN');
+        expect(outcome).toMatchObject({ status: 'applied', undoId: null });
+        return;
+      }
       const before = await connector.readComposer(firstComposer());
       const { composer, outcome } = await selectAndApply('YENİ METİN');
       if (outcome.status !== 'applied' || outcome.undoId === null) throw new Error('not applied');

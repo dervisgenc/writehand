@@ -34,6 +34,13 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'outlook-addin',
+          environment: 'jsdom',
+          include: ['tests/integration/outlook-addin/**/*.test.ts'],
+        },
+      },
+      {
+        test: {
           name: 'session',
           environment: 'jsdom',
           include: ['tests/integration/session/**/*.test.ts'],

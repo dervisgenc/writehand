@@ -14,6 +14,7 @@ const INTERNAL_PACKAGES = [
   '@writehand/ui',
   '@writehand/outlook-web',
   '@writehand/gmail-web',
+  '@writehand/outlook-addin',
   '@writehand/mail-dom',
   '@writehand/ai-openai',
   '@writehand/ai-claude-code',
@@ -28,7 +29,11 @@ const INTERNAL_PACKAGES = [
 const APP_SHARED_PACKAGES = ['@writehand/session', '@writehand/ai-connection', '@writehand/locales'];
 
 /** Every mail connector; none of them imports another. */
-const MAIL_CONNECTOR_PACKAGES = ['@writehand/outlook-web', '@writehand/gmail-web'];
+const MAIL_CONNECTOR_PACKAGES = [
+  '@writehand/outlook-web',
+  '@writehand/gmail-web',
+  '@writehand/outlook-addin',
+];
 
 /** Every AI provider package; none of them imports another. */
 const AI_PROVIDER_PACKAGES = [
@@ -226,6 +231,21 @@ export default tseslint.config(
           ],
         },
       ],
+      'no-restricted-globals': [
+        'error',
+        'chrome',
+        'browser',
+        'window',
+        'localStorage',
+        'sessionStorage',
+        { name: 'Office', message: 'Office.js is used only in outlook-addin/src/office/.' },
+      ],
+    },
+  },
+  {
+    // The Outlook add-in connector's only door to Office.js.
+    files: ['packages/mail-connectors/outlook-addin/src/office/**/*.ts'],
+    rules: {
       'no-restricted-globals': ['error', 'chrome', 'browser', 'window', 'localStorage', 'sessionStorage'],
     },
   },
