@@ -92,6 +92,7 @@ Things to know:
 - **Windows tools:** the helper app calls `reg`, `icacls`, `whoami`, `rundll32`, `tar` and `powershell` by their full path under `%SystemRoot%\System32`. Git Bash, for example, puts its own `whoami` first on `PATH`.
 - **Batch files:** `cmd.exe` reads `.cmd` files in the console code page (for example 437), so the development launcher is written as UTF-8 and starts with `chcp 65001 >nul`. A release install has no launcher; the manifest points to `writehand.exe`.
 - **Registry:** after installing, `reg query "HKCU\Software\Google\Chrome\NativeMessagingHosts\com.dervisgenc.writehand"` should show the manifest path. The keys for each browser are listed in [Helper app](./HELPER_APP.md#windows).
+- **Outlook add-in:** the new Outlook and classic Outlook run on Windows only; the certificate, sideloading, debugging and cache commands are in [Outlook add-in → Development on Windows](./OUTLOOK_ADDIN.md#development-on-windows). `pnpm addin:certs` asks Windows to trust a development CA for the current user; nothing else needs administrator rights.
 
 ## Architecture
 

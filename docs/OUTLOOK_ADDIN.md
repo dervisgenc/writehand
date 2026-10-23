@@ -211,18 +211,47 @@ Documents to update in the same change: `PRIVACY.md` (a section for the add-in: 
 
 The first release ships the first two paths and documents both in this file and in the README.
 
-## Local development and testing
+## Development on Windows
 
-- **Tooling:** Vite for the task pane (Vue plugin, like the extension's WXT build underneath), `@types/office-js` for typings, `office-addin-manifest` to validate the manifest, `office-addin-dev-certs` for the local `https://localhost:3000` certificate (it installs a development CA in the user's trust store, as the Yeoman generator does; development only). Yeoman and the Agents Toolkit are not used: the build is part of this monorepo ([Yeoman generator](https://learn.microsoft.com/en-us/office/dev/add-ins/develop/yeoman-generator-overview), [Troubleshoot manifest](https://learn.microsoft.com/en-us/office/dev/add-ins/testing/troubleshoot-manifest)).
-- **Commands:** `pnpm addin:dev` (dev server with the certificate), `pnpm addin:build` (production files plus `manifest.xml`), `pnpm addin:manifest --dev` (a manifest pointing at `localhost:3000` for sideloading), `pnpm addin:validate`. `pnpm check` gains the add-in's typecheck, lint, tests, build and package check.
-- **Sideloading for development:** Outlook on the web **Add from file** with the development manifest; on macOS this is the documented way ("you must manually sideload"). Debugging: browser developer tools on the web, `olk.exe --devtools` for the new Outlook, Safari Web Inspector on Mac after `defaults write com.microsoft.Outlook OfficeWebAddinDeveloperExtras -bool true` ([Debug add-ins](https://learn.microsoft.com/en-us/office/dev/add-ins/testing/debug-add-ins-overview)).
-- **Automated tests:**
-  - `tests/support/office/fake-office.ts`: an in-memory Office.js subset (`Office.onReady`, `context.mailbox.item` with `body.getAsync`, `setAsync`, `prependAsync`, `setSelectedDataAsync`, `getSelectedDataAsync`, `getComposeTypeAsync`, `conversationId`, `subject`, `from`, `dateTimeCreated`, `addHandlerAsync` for `ItemChanged`, `requirements.isSetSupported`, `partitionKey`, `officeTheme`) over synthetic draft HTML (user text, signature, quoted chain). Its selection and typing controls serve the shared contract tests.
-  - A new Vitest project `outlook-addin`: the `MailConnector` contract tests against the fake, plus connector tests for body anatomy on synthetic fixtures in the three HTML dialects (Outlook on the web and new Outlook, Word HTML from classic Outlook, Mac), the writes and their verification, the `ItemChanged` flow and the read-mode reply target.
-  - The moved controller tests run unchanged against `@writehand/session`.
-  - Playwright: the built task pane served locally with the fake Office injected before Office.js would load, covering open → write reply → preview → apply → status, settings and the first-run connection with a stubbed provider.
-  - A production package check (`scripts/verify-addin.mjs`): manifest ID, version and HTTPS URLs on the fixed origin, the CSP meta tag with exactly the allowed origins, one remote script (the Office.js CDN), no development markers.
-- **Real clients:** a new section in `docs/MANUAL_TESTING.md` with a matrix (Outlook on the web in Chrome, Firefox and Safari with a work account and an Outlook.com account; new Outlook for Windows; classic Outlook for Windows; Outlook for Mac) and checks for install, first run, key persistence after restart, selection replace, insert into an empty draft, rich table rendering, the reply form, theme, pinning and item switch, and "nothing was sent". Synthetic test results and real-client results are always reported separately.
+Every command runs from the repository root. Microsoft's sources for this section: [Sideload Outlook add-ins](https://learn.microsoft.com/en-us/office/dev/add-ins/outlook/sideload-outlook-add-ins-for-testing), [New Outlook on Windows](https://learn.microsoft.com/en-us/office/dev/add-ins/outlook/one-outlook), [Debug with Edge DevTools](https://learn.microsoft.com/en-us/office/dev/add-ins/testing/debug-add-ins-using-devtools-edge-chromium), [Clear the Office cache](https://learn.microsoft.com/en-us/office/dev/add-ins/testing/clear-cache), [Browsers and webviews](https://learn.microsoft.com/en-us/office/dev/add-ins/concepts/browsers-used-by-office-web-add-ins) (all read on 2026-10-23).
+
+| Command | What it does |
+| --- | --- |
+| `pnpm addin:certs` | Installs a development certificate for `https://localhost:3000` with `office-addin-dev-certs`: a "Developer CA for Microsoft Office Add-ins" in the current user's trusted root store (Windows asks you to confirm) and `localhost.crt`/`localhost.key` in `~/.office-addin-dev-certs`. Valid for 30 days; run it again when it expires. Version 3.0.1 of the tool sends no usage data (its usage data package is a no-op). Development only |
+| `pnpm addin:dev` | The task pane on `https://localhost:3000` with hot reload. Its Content Security Policy also allows the reload websocket and inline styles; it serves the development manifest at `/manifest.xml` |
+| `pnpm addin:build:local` | A production build for `https://localhost:3000` in `apps/outlook-addin/dist-local/`, with the production Content Security Policy and `manifest.xml`. Use it to check a real client with what users get |
+| `pnpm addin:serve` | Serves `dist-local/` on `https://localhost:3000` |
+| `pnpm addin:build` | The release build in `apps/outlook-addin/dist/`. With `WRITEHAND_ADDIN_ORIGIN=https://…` (an HTTPS origin other than localhost, without a path) it also writes `manifest.xml` for that origin; without it, only the pages are built |
+| `pnpm addin:validate` | Validates `dist-local/manifest.xml` with Microsoft's `office-addin-manifest`. It **sends the manifest to Microsoft's validation service** (`validationgateway.omex.office.net`, read from the tool's source), so it is not part of `pnpm check`; the manifest holds no personal data. `pnpm check` checks the manifest locally (`tests/integration/outlook-addin/manifest.test.ts`, `pnpm verify:addin`) |
+| `pnpm addin:outlook [--devtools] [--debug-port=N] [--restart]` | Starts the new Outlook: `--devtools` with Edge DevTools (`olk.exe --devtools`), `--debug-port` with its webviews on `127.0.0.1:N` for automated checks, `--restart` after closing a running one. While the port is open, any program on the computer can read the mailbox through it; close Outlook afterwards |
+
+**Loopback:** Microsoft’s current pages list only Edge WebView2 for Outlook on Windows and mention no loopback exemption; the `CheckNetIsolation LoopbackExempt` step in older guides applied to the retired EdgeHTML webview. Whether the new Outlook (an MSIX package) needs one is not documented; the real-client check in [Manual testing](./MANUAL_TESTING.md#7-outlook-add-in) records what happened.
+
+**Install the add-in for your mailbox (sideload).** The add-in needs a Microsoft 365 work or school mailbox on Exchange Online for the new Outlook ("doesn't currently support on-premises, hybrid, or sovereign Exchange accounts"), and your organization must let users add their own add-ins (the "My Custom Apps" role, on by default).
+
+1. Run `pnpm addin:certs` once, then `pnpm addin:build:local` and `pnpm addin:serve` (or `pnpm addin:dev`). Open `https://localhost:3000/taskpane.html` in Edge once: it must load without a certificate warning (it says that it runs inside Outlook).
+2. Open <https://aka.ms/olksideload> (Outlook on the web), sign in with the same mailbox, and choose **My add-ins → Custom Addins → Add a custom add-in → Add from File**. Select `apps/outlook-addin/dist-local/manifest.xml` and confirm. "Add from URL" no longer exists.
+3. The add-in appears for the mailbox in every Outlook that supports it: in the new Outlook after a restart; classic Outlook may take up to 24 hours (its cache). In classic Outlook, **File → Info → Manage Add-ins** opens the same page.
+4. Open an email or a draft and select **Writehand** on the ribbon (in the new Outlook, under **Apps** if the ribbon has no room).
+
+To remove it, open the same page and remove **Writehand** under **Custom Addins**. Remove the API key in the add-in's settings first if you want it gone from that Outlook.
+
+**Debug the task pane.**
+
+- New Outlook: close it and start it with `pnpm addin:outlook --devtools` (or run `olk.exe --devtools`). Right-click and Ctrl+Shift+I do not work in the new Outlook. If you close the DevTools window, close Outlook before starting it with `--devtools` again.
+- Classic Outlook: right-click in the task pane and choose **Inspect**, or press Ctrl+Shift+I with the pane focused. To catch the pane's start, set `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--auto-open-devtools-for-tabs` before starting Outlook.
+
+**Load changes.** A change to the pages: focus the task pane and press Ctrl+F5 (with `pnpm addin:dev`, hot reload does it). A change to the manifest (version, buttons, texts, permissions): remove and add the add-in again. If Outlook still shows the old one, clear its cache: in the new Outlook open DevTools (`--devtools`), **Network**, right-click, **Clear browser cache**; in classic Outlook close Outlook and delete `%LOCALAPPDATA%\Microsoft\Office\16.0\Wef\` (or run `npx office-addin-cache clear`). Do not delete single manifest files.
+
+**Automated tests.**
+
+- `tests/support/office/fake-office.ts`: an in-memory Office.js subset (`context.mailbox.item` in read or compose mode with `body.getAsync`, `getTypeAsync`, `setAsync`, `prependAsync`, `setSelectedDataAsync`, `getSelectedDataAsync`, `getComposeTypeAsync`, `displayReplyFormAsync`, `displayReplyForm`, `addHandlerAsync` for `ItemChanged`, `requirements.isSetSupported`, `userProfile`) over a DOM document of the body. A selection is replaced in place; with `focusLost` set, `setSelectedDataAsync` writes at the top of the body, as the Body reference documents.
+- `tests/fixtures/outlook-addin/bodies.ts`: synthetic bodies in the web and new Outlook dialect and in classic Outlook's Word HTML (made-up text, structures from public descriptions; the Word bookmarks are unverified).
+- Vitest project `outlook-addin`: the shared `MailConnector` contract, the connector's reading, writing, verification, undo, new reply, events and polling, the manifest, the Content Security Policy and the storage.
+- Playwright project `outlook-addin` (`tests/e2e/outlook-addin/`): the production build served from the fixture server under `/addin/`, with the fake Office.js in place of Microsoft's file and a stubbed Groq: first run, a reply in read mode, a selection in a draft, the page outside Outlook. It also checks that only the page's origin, Office.js and the provider were contacted and that nothing was logged as an error (a Content Security Policy violation is one).
+- `pnpm verify:addin` checks the production build.
+
+Passing these says nothing about a real Outlook. Real-client results are recorded separately in [Manual testing](./MANUAL_TESTING.md#7-outlook-add-in).
 
 ## Scope and phases
 
