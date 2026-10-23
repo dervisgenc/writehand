@@ -32,7 +32,14 @@ afterEach(() => {
   disposeLast = null;
 });
 
-function setup(options: FakeOfficeOptions, connectorOptions: { pollMs?: number } = {}) {
+/** Office.js answers asynchronously: a draft is reported once its compose type is known. */
+async function whenReady(connector: MailConnector): Promise<void> {
+  for (let attempt = 0; attempt < 20 && connector.getPageState().support === 'waiting'; attempt += 1) {
+    await tick();
+  }
+}
+
+async function setup(options: FakeOfficeOptions, connectorOptions: { pollMs?: number } = {}) {
   const fake = createFakeOffice(options);
   const connector = createOutlookAddinConnector({
     mailbox: createOfficeMailbox(fake.office as typeof Office),
@@ -41,6 +48,7 @@ function setup(options: FakeOfficeOptions, connectorOptions: { pollMs?: number }
     formatDate: (iso) => `date:${iso}`,
   });
   disposeLast = () => connector.dispose();
+  await whenReady(connector);
   return { connector, controls: fake.controls };
 }
 
@@ -88,26 +96,30 @@ async function bodyRequest(
   };
 }
 
-describeMailConnectorContract('Outlook add-in (Office.js, reply draft in the web and new Outlook)', () => {
-  const fake = createFakeOffice(draft(WEB_REPLY_DRAFT, { composeType: 'reply' }));
-  const connector = createOutlookAddinConnector({
-    mailbox: createOfficeMailbox(fake.office as typeof Office),
-    pollMs: 0,
-    settleMs: 0,
-  });
-  return {
-    connector,
-    selectablePhrase: 'perşembe günü',
-    selectInComposer: (_ref, phrase) => fake.controls.select(phrase),
-    typeInComposer: (_ref, text) => fake.controls.type(text),
-    undoesSelectionWrites: false,
-    cleanup: () => undefined,
-  };
-});
+describeMailConnectorContract(
+  'Outlook add-in (Office.js, reply draft in the web and new Outlook)',
+  async () => {
+    const fake = createFakeOffice(draft(WEB_REPLY_DRAFT, { composeType: 'reply' }));
+    const connector = createOutlookAddinConnector({
+      mailbox: createOfficeMailbox(fake.office as typeof Office),
+      pollMs: 0,
+      settleMs: 0,
+    });
+    await whenReady(connector);
+    return {
+      connector,
+      selectablePhrase: 'perşembe günü',
+      selectInComposer: (_ref, phrase) => fake.controls.select(phrase),
+      typeInComposer: (_ref, text) => fake.controls.type(text),
+      undoesSelectionWrites: false,
+      cleanup: () => undefined,
+    };
+  },
+);
 
 describe('Outlook add-in connector: the open item', () => {
-  it('reports a draft in compose mode and what the add-in cannot do there', () => {
-    const { connector } = setup(draft(WEB_REPLY_DRAFT));
+  it('reports a draft in compose mode and what the add-in cannot do there', async () => {
+    const { connector } = await setup(draft(WEB_REPLY_DRAFT));
     const state = connector.getPageState();
 
     expect(state).toMatchObject({ support: 'ready', composers: [expect.any(Object)] });
@@ -117,29 +129,43 @@ describe('Outlook add-in connector: the open item', () => {
     expect(JSON.stringify(state)).not.toContain('example.test');
   });
 
-  it('reports a received message in read mode as a conversation without a draft that can get a new reply', () => {
-    const { connector } = setup(received());
+  it('reports a received message in read mode as a conversation without a draft that can get a new reply', async () => {
+    const { connector } = await setup(received());
     expect(connector.getPageState()).toMatchObject({
       composers: [],
       features: { receivedSelection: false, createReply: true },
     });
   });
 
-  it('reports nothing open while a pinned pane shows no item', () => {
-    const { connector } = setup({ item: null });
+  it('reports nothing open while a pinned pane shows no item', async () => {
+    const { connector } = await setup({ item: null });
     expect(connector.getPageState()).toMatchObject({ support: 'ready', activeThread: null, composers: [] });
   });
 
-  it('has no conversation for a new message', () => {
-    const { connector } = setup(newMessage(WEB_EMPTY_NEW_MESSAGE));
+  it('has no conversation for a new message', async () => {
+    const { connector } = await setup(newMessage(WEB_EMPTY_NEW_MESSAGE));
     expect(connector.getPageState().activeThread).toBeNull();
     expect(composerOf(connector).threadKey).toBeNull();
+  });
+
+  it('treats a new message as new even when Outlook already gives it a conversation ID', async () => {
+    // Seen in the new Outlook for Windows (2026-10-23); Microsoft documents null until saved.
+    const { connector } = await setup(
+      draft(WEB_EMPTY_NEW_MESSAGE, {
+        composeType: 'newMail',
+        conversationId: 'conversation-of-a-new-message',
+      }),
+    );
+    expect(connector.getPageState().activeThread).toBeNull();
+    expect(composerOf(connector).threadKey).toBeNull();
+    const snapshot = await connector.readComposer(composerOf(connector));
+    expect(snapshot.ok && snapshot.value.canInsertIntoEmptyBody).toBe(true);
   });
 });
 
 describe('Outlook add-in connector: reading the body', () => {
   it('separates the user region of a web reply draft from its signature and quote', async () => {
-    const { connector, controls } = setup(draft(WEB_REPLY_DRAFT));
+    const { connector, controls } = await setup(draft(WEB_REPLY_DRAFT));
     // Office.js returns the email's style blocks too; they never reach the text.
     expect(controls.bodyHtml()).toContain('<style');
     const snapshot = await connector.readComposer(composerOf(connector));
@@ -154,10 +180,10 @@ describe('Outlook add-in connector: reading the body', () => {
   });
 
   it("separates the user region of classic Outlook's Word HTML at its bookmarks (synthetic sample)", async () => {
-    const { connector } = setup(draft(CLASSIC_REPLY_DRAFT));
+    const { connector } = await setup(draft(CLASSIC_REPLY_DRAFT));
     expect((await editable(connector)).trim()).toBe('Toplantı perşembe günü olsun mu?');
 
-    const classicNew = setup(newMessage(CLASSIC_EMPTY_NEW_MESSAGE_WITH_SIGNATURE));
+    const classicNew = await setup(newMessage(CLASSIC_EMPTY_NEW_MESSAGE_WITH_SIGNATURE));
     const snapshot = await classicNew.connector.readComposer(composerOf(classicNew.connector));
     expect(snapshot.ok && snapshot.value).toMatchObject({
       canInsertIntoEmptyBody: true,
@@ -166,7 +192,7 @@ describe('Outlook add-in connector: reading the body', () => {
   });
 
   it('offers an empty reply for inserting, and the whole body only in a new message without signature or quote', async () => {
-    const empty = setup(draft(WEB_EMPTY_REPLY));
+    const empty = await setup(draft(WEB_EMPTY_REPLY));
     const emptySnapshot = await empty.connector.readComposer(composerOf(empty.connector));
     expect(emptySnapshot.ok && emptySnapshot.value).toMatchObject({
       editableText: '',
@@ -174,17 +200,17 @@ describe('Outlook add-in connector: reading the body', () => {
       canReplaceBody: false,
     });
 
-    const plain = setup(newMessage(WEB_NEW_MESSAGE));
+    const plain = await setup(newMessage(WEB_NEW_MESSAGE));
     const plainSnapshot = await plain.connector.readComposer(composerOf(plain.connector));
     expect(plainSnapshot.ok && plainSnapshot.value.canReplaceBody).toBe(true);
 
-    const signed = setup(newMessage(WEB_NEW_MESSAGE_WITH_SIGNATURE));
+    const signed = await setup(newMessage(WEB_NEW_MESSAGE_WITH_SIGNATURE));
     const signedSnapshot = await signed.connector.readComposer(composerOf(signed.connector));
     expect(signedSnapshot.ok && signedSnapshot.value.canReplaceBody).toBe(false);
   });
 
   it("reads a reply draft's quoted earlier mail as one context message, without the user's text or signature", async () => {
-    const { connector } = setup(draft(WEB_REPLY_DRAFT));
+    const { connector } = await setup(draft(WEB_REPLY_DRAFT));
     const thread = await connector.readThread(threadOf(connector), notAborted);
     if (!thread.ok) throw new Error(thread.error.code);
 
@@ -200,7 +226,7 @@ describe('Outlook add-in connector: reading the body', () => {
   });
 
   it('reads the open received message with its sender name and exact date, never the address', async () => {
-    const { connector } = setup(received());
+    const { connector } = await setup(received());
     const thread = await connector.readThread(threadOf(connector), notAborted);
     if (!thread.ok) throw new Error(thread.error.code);
     const [message] = thread.value.messages;
@@ -216,7 +242,7 @@ describe('Outlook add-in connector: reading the body', () => {
   });
 
   it('refuses to read a conversation that is no longer open', async () => {
-    const { connector, controls } = setup(received());
+    const { connector, controls } = await setup(received());
     const thread = threadOf(connector);
     controls.switchItem({
       mode: 'read',
@@ -254,7 +280,7 @@ describe('Outlook add-in connector: writing', () => {
   }
 
   it('replaces the selection with setSelectedDataAsync and verifies it, without offering undo', async () => {
-    const { connector, controls } = setup(draft(WEB_REPLY_DRAFT));
+    const { connector, controls } = await setup(draft(WEB_REPLY_DRAFT));
     controls.select('perşembe günü');
     const outcome = await connector.applyText(
       await selectionRequest(connector, 'perşembe günü', 'cuma sabahı'),
@@ -267,7 +293,7 @@ describe('Outlook add-in connector: writing', () => {
   });
 
   it('does not write when the selection was lost before the write', async () => {
-    const { connector, controls } = setup(draft(WEB_REPLY_DRAFT));
+    const { connector, controls } = await setup(draft(WEB_REPLY_DRAFT));
     controls.select('perşembe günü');
     const request = await selectionRequest(connector, 'perşembe günü', 'cuma sabahı');
     controls.clearSelection();
@@ -280,7 +306,7 @@ describe('Outlook add-in connector: writing', () => {
   });
 
   it('reports an uncertain outcome and never retries when Outlook writes at the top instead (body lost focus)', async () => {
-    const { connector, controls } = setup(draft(WEB_REPLY_DRAFT));
+    const { connector, controls } = await setup(draft(WEB_REPLY_DRAFT));
     controls.select('perşembe günü');
     const request = await selectionRequest(connector, 'perşembe günü', 'cuma sabahı');
     controls.focusLost = true;
@@ -294,7 +320,7 @@ describe('Outlook add-in connector: writing', () => {
   });
 
   it('reports a failed Office call that changed nothing as not written', async () => {
-    const { connector, controls } = setup(draft(WEB_REPLY_DRAFT));
+    const { connector, controls } = await setup(draft(WEB_REPLY_DRAFT));
     controls.select('perşembe günü');
     const request = await selectionRequest(connector, 'perşembe günü', 'cuma sabahı');
     controls.failNext = 'body.setSelectedDataAsync';
@@ -306,7 +332,7 @@ describe('Outlook add-in connector: writing', () => {
   });
 
   it('writes an empty reply above the signature and the quote with prependAsync', async () => {
-    const { connector, controls } = setup(draft(WEB_EMPTY_REPLY));
+    const { connector, controls } = await setup(draft(WEB_EMPTY_REPLY));
     const outcome = await connector.applyText(
       await bodyRequest(connector, 'insert-empty', 'Teşekkürler Ayşe,\nperşembe 14:00 uygun.'),
     );
@@ -320,7 +346,7 @@ describe('Outlook add-in connector: writing', () => {
   });
 
   it('writes formatted content as HTML and verifies it by its visible text', async () => {
-    const { connector, controls } = setup(draft(WEB_EMPTY_REPLY));
+    const { connector, controls } = await setup(draft(WEB_EMPTY_REPLY));
     const request = await bodyRequest(connector, 'insert-empty', 'Tarih | Saat\nPerşembe | 14:00', {
       rich: {
         html: '<table><tr><th>Tarih</th><th>Saat</th></tr><tr><td>Perşembe</td><td>14:00</td></tr></table>',
@@ -333,7 +359,7 @@ describe('Outlook add-in connector: writing', () => {
   });
 
   it('replaces the whole body of a new message and undoes it by writing the previous body back', async () => {
-    const { connector, controls } = setup(newMessage(WEB_NEW_MESSAGE));
+    const { connector, controls } = await setup(newMessage(WEB_NEW_MESSAGE));
     const before = await editable(connector);
     const outcome = await connector.applyText(
       await bodyRequest(connector, 'replace-body', 'Rapor cuma günü hazır.'),
@@ -347,7 +373,7 @@ describe('Outlook add-in connector: writing', () => {
   });
 
   it('does not undo after the user typed in the new message', async () => {
-    const { connector, controls } = setup(newMessage(WEB_NEW_MESSAGE));
+    const { connector, controls } = await setup(newMessage(WEB_NEW_MESSAGE));
     const outcome = await connector.applyText(
       await bodyRequest(connector, 'replace-body', 'Rapor cuma günü hazır.'),
     );
@@ -361,7 +387,7 @@ describe('Outlook add-in connector: writing', () => {
   });
 
   it('never replaces the whole body of a reply, where setAsync would also replace the quoted thread', async () => {
-    const { connector, controls } = setup(draft(WEB_REPLY_DRAFT));
+    const { connector, controls } = await setup(draft(WEB_REPLY_DRAFT));
     const request = await bodyRequest(connector, 'replace-body', 'Yeni metin');
 
     expect(await connector.applyText(request)).toMatchObject({
@@ -372,7 +398,7 @@ describe('Outlook add-in connector: writing', () => {
   });
 
   it('writes plain text with Text coercion into a plain-text draft, even for a formatted result', async () => {
-    const { connector, controls } = setup(
+    const { connector, controls } = await setup(
       draft('<html><body></body></html>', {
         bodyFormat: 'text',
         conversationId: null,
@@ -407,7 +433,7 @@ describe('Outlook add-in connector: a new reply in read mode', () => {
   }
 
   it('opens one reply form with the result as HTML and sends nothing', async () => {
-    const { connector, controls } = setup(received());
+    const { connector, controls } = await setup(received());
     const request = await replyRequest(connector, 'Teşekkürler <Ayşe>,\nperşembe uygun.');
 
     expect(await connector.applyText(request)).toEqual({
@@ -423,7 +449,7 @@ describe('Outlook add-in connector: a new reply in read mode', () => {
   });
 
   it('refuses a result over the 32 KB reply form limit without opening anything', async () => {
-    const { connector, controls } = setup(received());
+    const { connector, controls } = await setup(received());
     const request = await replyRequest(connector, 'a'.repeat(REPLY_FORM_LIMIT_BYTES));
 
     expect(await connector.applyText(request)).toMatchObject({
@@ -434,14 +460,14 @@ describe('Outlook add-in connector: a new reply in read mode', () => {
   });
 
   it('falls back to displayReplyForm where Mailbox 1.9 is missing', async () => {
-    const { connector, controls } = setup({ ...received(), supported: ['1.1', '1.2', '1.3', '1.5'] });
+    const { connector, controls } = await setup({ ...received(), supported: ['1.1', '1.2', '1.3', '1.5'] });
     await connector.applyText(await replyRequest(connector, 'Tamam.'));
     expect(controls.calls).toContain('displayReplyForm');
     expect(controls.openedReplies).toHaveLength(1);
   });
 
   it('refuses the reply after another email was opened in the pinned pane', async () => {
-    const { connector, controls } = setup(received());
+    const { connector, controls } = await setup(received());
     const request = await replyRequest(connector, 'Tamam.');
     controls.switchItem({
       mode: 'read',
@@ -459,7 +485,7 @@ describe('Outlook add-in connector: a new reply in read mode', () => {
   });
 
   it('refuses a new reply target in compose mode', async () => {
-    const { connector } = setup(draft(WEB_REPLY_DRAFT));
+    const { connector } = await setup(draft(WEB_REPLY_DRAFT));
     const outcome = await connector.applyText({
       applyOperationId: 'apply-reply',
       target: {
@@ -476,7 +502,7 @@ describe('Outlook add-in connector: a new reply in read mode', () => {
 
 describe('Outlook add-in connector: events', () => {
   it('reports the next email in a pinned pane: the conversation, then the page state', async () => {
-    const { connector, controls } = setup(received());
+    const { connector, controls } = await setup(received());
     const events: MailEvent[] = [];
     connector.subscribe((event) => events.push(event));
     await tick();
@@ -494,14 +520,19 @@ describe('Outlook add-in connector: events', () => {
   });
 
   it('reports a draft that appears and disappears', async () => {
-    const { connector, controls } = setup(received());
+    const { connector, controls } = await setup(received());
     const events: MailEvent[] = [];
     connector.subscribe((event) => events.push(event));
     await tick();
 
     controls.switchItem({ mode: 'compose', bodyHtml: WEB_REPLY_DRAFT, conversationId: 'c-3' });
+    // The draft is announced once Office.js has told whether it is a reply.
+    expect(connector.getPageState()).toMatchObject({ support: 'waiting', composers: [] });
+    await tick();
     controls.switchItem(null);
     expect(events.map((event) => event.type)).toEqual([
+      'active-thread-changed',
+      'page-state-changed',
       'active-thread-changed',
       'composer-added',
       'page-state-changed',
@@ -512,7 +543,7 @@ describe('Outlook add-in connector: events', () => {
   });
 
   it("notices the user's typing by reading the draft again while someone listens", async () => {
-    const { connector, controls } = setup(draft(WEB_REPLY_DRAFT), { pollMs: 5 });
+    const { connector, controls } = await setup(draft(WEB_REPLY_DRAFT), { pollMs: 5 });
     await editable(connector);
     const events: MailEvent[] = [];
     connector.subscribe((event) => events.push(event));

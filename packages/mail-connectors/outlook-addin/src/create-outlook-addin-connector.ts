@@ -62,7 +62,9 @@ interface CurrentItem {
   readonly item: OfficeItem;
   /** New for every item the task pane shows, so a draft's key never carries over. */
   readonly instanceKey: string;
-  readonly threadKey: string | null;
+  /** A draft's conversation is known only once its compose type is (see `resolveDraft`). */
+  threadKey: string | null;
+  resolved: boolean;
   readonly messageKey: string | null;
   composeType: Promise<ComposeType | null> | null;
 }
@@ -191,20 +193,43 @@ export function createOutlookAddinConnector(options: OutlookAddinConnectorOption
     documentInstanceId,
   });
 
+  const threadKeyOf = (source: string | null) => (source === null ? null : `thread-${opaqueHash(source)}`);
+
   function probe(item: OfficeItem | null): CurrentItem | null {
     if (item === null) return null;
     const instanceKey = createId();
-    const threadSource = item.conversationId ?? (item.mode === 'read' ? item.itemId : null);
-    return {
+    const read = item.mode === 'read';
+    const entry: CurrentItem = {
       item,
       instanceKey,
-      threadKey: threadSource === null ? null : `thread-${opaqueHash(threadSource)}`,
-      messageKey: item.mode === 'read' ? `message-${opaqueHash(item.itemId ?? instanceKey)}` : null,
+      threadKey: read ? threadKeyOf(item.conversationId ?? item.itemId) : null,
+      resolved: read,
+      messageKey: read ? `message-${opaqueHash(item.itemId ?? instanceKey)}` : null,
       composeType: null,
     };
+    if (!read) void resolveDraft(entry as ComposeEntry);
+    return entry;
   }
 
-  let current = probe(mailbox.item());
+  /**
+   * A draft belongs to a conversation only if it is a reply or a forward. The new Outlook gives a
+   * new message a conversation ID before it is saved (Microsoft documents `null`), so the ID alone
+   * would make every new message look like a reply. The page waits for the compose type.
+   */
+  async function resolveDraft(entry: ComposeEntry): Promise<void> {
+    const type = await composeTypeOf(entry);
+    if (disposed || current !== entry) return;
+    const isNew = type === null ? entry.item.conversationId === null : type === 'newMail';
+    entry.threadKey = isNew ? null : threadKeyOf(entry.item.conversationId);
+    entry.resolved = true;
+    if (entry.threadKey !== null) {
+      emit({ type: 'active-thread-changed', previous: null, current: threadRef(entry) });
+    }
+    emit({ type: 'composer-added', ref: composerRef(entry) });
+    emit({ type: 'page-state-changed', state: getPageState() });
+  }
+
+  let current: CurrentItem | null = null;
 
   const emit = (event: MailEvent) => {
     for (const listener of [...listeners]) listener(event);
@@ -227,17 +252,25 @@ export function createOutlookAddinConnector(options: OutlookAddinConnectorOption
   });
 
   function getPageState(): PageState {
+    const draftReady = current?.item.mode === 'compose' && current.resolved;
     return {
-      support: 'ready',
+      support: current?.item.mode === 'compose' && !current.resolved ? 'waiting' : 'ready',
       scope: scope(),
       activeThread: threadRef(current),
-      composers: current?.item.mode === 'compose' ? [composerRef(current)] : [],
+      composers: draftReady && current !== null ? [composerRef(current)] : [],
       features: features(),
     };
   }
 
   function composeEntry(ref: ComposerRef): ComposeEntry | null {
-    if (current === null || current.item.mode !== 'compose' || !isSameScope(ref.scope, scope())) return null;
+    if (
+      current === null ||
+      current.item.mode !== 'compose' ||
+      !current.resolved ||
+      !isSameScope(ref.scope, scope())
+    ) {
+      return null;
+    }
     return ref.composerKey === composerRef(current).composerKey ? (current as ComposeEntry) : null;
   }
 
@@ -306,7 +339,8 @@ export function createOutlookAddinConnector(options: OutlookAddinConnectorOption
     if (disposed) return;
     const previous = current;
     const previousThread = threadRef(previous);
-    const previousComposer = previous?.item.mode === 'compose' ? composerRef(previous) : null;
+    const previousComposer =
+      previous?.item.mode === 'compose' && previous.resolved ? composerRef(previous) : null;
 
     const nextScope = accountScopeFor(mailbox.accountHint());
     const accountChanged = nextScope !== 'unknown' && nextScope !== accountScopeId;
@@ -328,9 +362,11 @@ export function createOutlookAddinConnector(options: OutlookAddinConnectorOption
     if (!sameThread && (previousThread !== null || nextThread !== null)) {
       emit({ type: 'active-thread-changed', previous: previousThread, current: nextThread });
     }
-    if (current?.item.mode === 'compose') emit({ type: 'composer-added', ref: composerRef(current) });
+    // A draft is announced once its compose type is known (`resolveDraft`).
     emit({ type: 'page-state-changed', state: getPageState() });
   }
+
+  current = probe(mailbox.item());
 
   void mailbox.onItemChanged(itemChanged).then((stop) => {
     if (disposed) stop();

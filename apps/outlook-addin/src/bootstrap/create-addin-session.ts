@@ -8,7 +8,7 @@ import {
   createSecretVault,
   type ApiKeyService,
 } from '@writehand/ai-connection';
-import { type Settings, type SettingsChanges } from '@writehand/contracts';
+import { type MailConnector, type Settings, type SettingsChanges } from '@writehand/contracts';
 import { createSession } from '@writehand/core';
 import { createOutlookAddinConnector } from '@writehand/outlook-addin';
 import {
@@ -41,6 +41,25 @@ export interface AddinSession {
 }
 
 /**
+ * Office.js tells a draft's compose type asynchronously; the session starts once the page knows
+ * whether the open draft is a reply. After `timeoutMs` it starts anyway and follows the events.
+ */
+function whenPageReady(connector: MailConnector, timeoutMs = 5_000): Promise<void> {
+  if (connector.getPageState().support !== 'waiting') return Promise.resolve();
+  return new Promise((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      stop();
+      resolve();
+    };
+    const timer = setTimeout(done, timeoutMs);
+    const stop = connector.subscribe((event) => {
+      if (event.type === 'page-state-changed' && event.state.support !== 'waiting') done();
+    });
+  });
+}
+
+/**
  * Wires the task pane together, like the extension's content script does, without messaging:
  * the pane is one page, so the session calls the API key service directly. Dependencies are
  * passed as parameters; there is no dependency injection library or event bus.
@@ -70,6 +89,7 @@ export async function createAddinSession(
   }));
 
   const connector = createOutlookAddinConnector({ mailbox: host.mailbox, formatDate });
+  await whenPageReady(connector);
   const ids = createRandomIds();
   const store = createSessionStore(
     createSession({

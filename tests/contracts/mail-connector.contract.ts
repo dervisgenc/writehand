@@ -30,7 +30,11 @@ export interface ContractHarness {
 
 const notAborted = { aborted: false };
 
-export function describeMailConnectorContract(name: string, setup: () => ContractHarness): void {
+/** `setup` may wait until the connector reports a ready page (Office.js answers asynchronously). */
+export function describeMailConnectorContract(
+  name: string,
+  setup: () => ContractHarness | Promise<ContractHarness>,
+): void {
   describe(`MailConnector contract: ${name}`, () => {
     let harness: ContractHarness;
     let connector: MailConnector;
@@ -70,8 +74,8 @@ export function describeMailConnectorContract(name: string, setup: () => Contrac
       return { composer, request, outcome: await connector.applyText(request) };
     }
 
-    beforeEach(() => {
-      harness = setup();
+    beforeEach(async () => {
+      harness = await setup();
       connector = harness.connector;
     });
     afterEach(() => {
