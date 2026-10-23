@@ -283,6 +283,20 @@ export default tseslint.config(
     },
   },
   {
+    // The add-in's clipboard fallback: the copy command only, which writes the clipboard, never the page.
+    files: ['apps/outlook-addin/src/platform/clipboard.ts'],
+    rules: {
+      'no-restricted-properties': ['error', { property: 'innerHTML' }, { property: 'outerHTML' }],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.property.name='execCommand']:not([arguments.0.value='copy'])",
+          message: 'Only the copy command is allowed here.',
+        },
+      ],
+    },
+  },
+  {
     // session: the panel session both apps share. It reaches the mail page only through the
     // connector, storage only through `StorageArea`, and the AI only through `TextProcessor`.
     files: ['packages/session/src/**/*.ts'],
