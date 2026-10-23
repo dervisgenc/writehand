@@ -13,7 +13,7 @@ export const AI_CONNECTION_STORAGE_KEY = 'aiConnection';
 const preferencesSchema = z
   .object({
     version: z.literal(1),
-    /** The method chosen in this browser; null until the user chooses one. */
+    /** The method chosen in this browser profile or Outlook client; null until the user chooses one. */
     mode: z.enum(AI_MODES).nullable(),
     /** The provider of the API key method. */
     provider: z.enum(API_PROVIDERS),
@@ -22,7 +22,7 @@ const preferencesSchema = z
   })
   .strict();
 
-/** The connection choices of this browser profile. Secrets are kept in the vault, never here. */
+/** The connection choices of this browser profile or Outlook client. Secrets are kept in the vault, never here. */
 export interface AiConnectionPreferences {
   readonly mode: AiMode | null;
   readonly provider: ApiProvider;

@@ -1,5 +1,7 @@
 import type { TextBlockKind } from '@writehand/contracts';
 
+import { isRendered } from './dom';
+
 /**
  * One-to-one mapping of the `[start, end)` range in the output text to the
  * `[nodeOffset, nodeOffset + (end - start))` range in a text node. Inserted line
@@ -109,8 +111,8 @@ const STRUCTURAL_PARENTS = new Set(['TABLE', 'TBODY', 'THEAD', 'TFOOT', 'TR', 'U
 
 /**
  * Invisible tracking and preview text is usually hidden with inline styles. In
- * environments without `checkVisibility` (e.g. the test DOM) this check is the
- * fallback.
+ * environments without `checkVisibility` (e.g. the test DOM) and in documents that are never
+ * rendered (body HTML parsed with `DOMParser`) this check is the fallback.
  */
 function isHidden(element: Element): boolean {
   if (element.hasAttribute('hidden')) {
@@ -124,7 +126,7 @@ function isHidden(element: Element): boolean {
   ) {
     return true;
   }
-  if (typeof element.checkVisibility === 'function' && element.isConnected) {
+  if (typeof element.checkVisibility === 'function' && isRendered(element)) {
     return !element.checkVisibility({ visibilityProperty: true });
   }
   return false;

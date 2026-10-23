@@ -23,12 +23,17 @@ export const classifyBody = createMailMarkupClassifier({
   signature: [...MAIL_SIGNATURE_SELECTORS, ...WORD_MAIL_SIGNATURE_SELECTORS],
 });
 
+/** Style blocks of email HTML; the text readers skip them anyway. */
+const STYLE_BLOCK = /<style\b[^>]*>[\s\S]*?<\/style\s*>/gi;
+
 /**
  * Parses body HTML from Office.js into a detached document. Scripts in it never run and its
- * images and links are never loaded; nothing of it is inserted into the task pane.
+ * images and links are never loaded; nothing of it is inserted into the task pane. Style blocks
+ * are dropped first: the pane's Content Security Policy refuses them even in a detached document
+ * and would report every email's styles as a violation.
  */
 export function parseBody(html: string): HTMLElement {
-  return new DOMParser().parseFromString(html, 'text/html').body;
+  return new DOMParser().parseFromString(html.replace(STYLE_BLOCK, ''), 'text/html').body;
 }
 
 export interface DraftBody {

@@ -1,0 +1,32 @@
+{
+  "name": "@writehand/outlook-addin-app",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Writehand for the Outlook applications: the Office add-in's task pane",
+  "scripts": {
+    "dev": "vite --configLoader runner",
+    "build": "vite build --configLoader runner",
+    "build:local": "vite build --configLoader runner --mode localhost",
+    "serve": "vite preview --configLoader runner --mode localhost",
+    "typecheck": "vue-tsc -p tsconfig.json",
+    "certs": "office-addin-dev-certs install"
+  },
+  "dependencies": {
+    "@writehand/ai-connection": "workspace:*",
+    "@writehand/contracts": "workspace:*",
+    "@writehand/core": "workspace:*",
+    "@writehand/locales": "workspace:*",
+    "@writehand/mail-dom": "workspace:*",
+    "@writehand/outlook-addin": "workspace:*",
+    "@writehand/session": "workspace:*",
+    "@writehand/ui": "workspace:*",
+    "vue": "^3.5.43"
+  },
+  "devDependencies": {
+    "@types/office-js": "1.0.613",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "office-addin-dev-certs": "3.0.1",
+    "vite": "^8.3.4"
+  }
+}

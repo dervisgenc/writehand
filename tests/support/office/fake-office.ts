@@ -73,8 +73,23 @@ export interface FakeOffice {
   readonly controls: FakeOfficeControls;
 }
 
+/**
+ * The fake keeps a body's `<style>` blocks inert (as `<template>`) so that parsing it in the
+ * task pane's page raises no CSP report, and gives them back as `<style>` from `getAsync`, as
+ * Outlook does: the connector has to cope with them.
+ */
+const INERT_STYLE = 'template data-fake-style';
+
 function parseDocument(html: string): Document {
-  return new DOMParser().parseFromString(html, 'text/html');
+  const inert = html.replace(/<style\b/gi, `<${INERT_STYLE}`).replace(/<\/style\s*>/gi, '</template>');
+  return new DOMParser().parseFromString(inert, 'text/html');
+}
+
+function serialize(doc: Document): string {
+  return doc.documentElement.outerHTML
+    .replace(/<template data-fake-style=""/g, '<style')
+    .replace(/<template data-fake-style/g, '<style')
+    .replace(/<\/template>/g, '</style>');
 }
 
 export function createFakeOffice(options: FakeOfficeOptions): FakeOffice {
@@ -92,7 +107,7 @@ export function createFakeOffice(options: FakeOfficeOptions): FakeOffice {
     openedReplies,
     focusLost: false,
     failNext: null,
-    bodyHtml: () => doc.documentElement.outerHTML,
+    bodyHtml: () => serialize(doc),
     bodyText: () => doc.body.textContent ?? '',
     select(phrase) {
       const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
@@ -154,7 +169,7 @@ export function createFakeOffice(options: FakeOfficeOptions): FakeOffice {
     return {
       getAsync(coercion: string, callback: Callback<string>) {
         respond('body.getAsync', callback, () =>
-          coercion === 'html' ? doc.documentElement.outerHTML : (doc.body.textContent ?? ''),
+          coercion === 'html' ? serialize(doc) : (doc.body.textContent ?? ''),
         );
       },
       getTypeAsync(callback: Callback<string>) {

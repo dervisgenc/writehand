@@ -21,12 +21,17 @@ import type { IconName } from './icons';
  * The AI connection card: the method choice and the chosen method's settings. The `helper`
  * slot replaces a helper app method's settings while the helper app is not connected.
  */
-const props = defineProps<{
-  status: AiStatus | null;
-  text: AiText;
-  error: string | null;
-  busy: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    status: AiStatus | null;
+    text: AiText;
+    error: string | null;
+    busy: boolean;
+    /** The methods this app offers; with only one, the method choice is not shown. */
+    modes?: readonly AiMode[];
+  }>(),
+  { modes: () => AI_MODES },
+);
 const emit = defineEmits<{
   command: [command: AiCommand];
   refresh: [];
@@ -98,9 +103,9 @@ function chooseMode(mode: AiMode) {
       <span>{{ error }}</span>
     </p>
     <template v-if="status">
-      <div class="ew-method-grid" role="radiogroup" :aria-label="text.methodLabel">
+      <div v-if="modes.length > 1" class="ew-method-grid" role="radiogroup" :aria-label="text.methodLabel">
         <label
-          v-for="mode in AI_MODES"
+          v-for="mode in modes"
           :key="mode"
           class="ew-method"
           :data-mode="mode"

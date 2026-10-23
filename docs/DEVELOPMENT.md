@@ -51,8 +51,10 @@ All commands run from the repository root.
 | `pnpm outlook:inspect <command>` | Runs the extension's reading code on the live Outlook page with masked output; see [Live inspection](#live-inspection) |
 | `pnpm gmail:inspect <command>` | The same, read-only, on a live Gmail tab in that Firefox window; see [Live inspection](#live-inspection) |
 | `pnpm release:version <x.y.z>` | Sets the version in the root `package.json` and opens its section in `CHANGELOG.md`; see [Releasing](./RELEASING.md) |
-| `pnpm store:assets [icons] [screenshots] [promo] [video]` | Generates icons, store screenshots, promo images and the demo video in `store/`; see [Store assets](./RELEASING.md#store-assets) |
-| `pnpm check` | `typecheck`, `lint`, `format:check`, `test`, `build` and `verify:packages`; CI runs it on Linux, macOS and Windows |
+| `pnpm store:assets [icons] [addin-icons] [screenshots] [promo] [video]` | Generates icons (`addin-icons`: only the Outlook add-in's), store screenshots, promo images and the demo video in `store/`; see [Store assets](./RELEASING.md#store-assets) |
+| `pnpm addin:dev`, `addin:build`, `addin:build:local`, `addin:serve`, `addin:certs`, `addin:validate` | The Outlook add-in's task pane; see [Outlook add-in](./OUTLOOK_ADDIN.md#development-on-windows) |
+| `pnpm verify:addin` | Checks the add-in's production build: the pages' Content Security Policy, Office.js as the only remote script, no development code, and the manifest's ID, version, origin and permission when one was written |
+| `pnpm check` | `typecheck`, `lint`, `format:check`, `test`, `build` (the extension, the helper app and the add-in), `verify:packages` and `verify:addin`; CI runs it on Linux, macOS and Windows |
 
 To build a single package: `pnpm --filter @writehand/browser-extension exec wxt build -b firefox --mv3`. Store archives: `pnpm --filter @writehand/browser-extension zip:all`.
 
@@ -108,6 +110,11 @@ flowchart TD
     EXT --> GMAIL[packages/mail-connectors/gmail-web]
     MAIL --> DOM[packages/mail-connectors/mail-dom]
     GMAIL --> DOM
+    ADDIN[apps/outlook-addin<br/>task pane, platform, manifest] --> SESSION
+    ADDIN --> AICONN
+    ADDIN --> LOCALES
+    ADDIN --> OFFICE[packages/mail-connectors/outlook-addin]
+    OFFICE --> DOM
     DOM --> CONTRACTS
     UI --> FORMAT[packages/email-format]
     CORE --> CONTRACTS[packages/contracts]
@@ -143,6 +150,7 @@ flowchart TD
 | `ai-claude-code` | Finds the user's Claude Code, reads its sign-in status and runs it in restricted print mode | Browser globals, UI or mailbox packages, the other provider package |
 | `apps/ai-companion` | The helper app: native messaging host, loopback sign-in, credential store, installer, updater. OS differences live only in `src/platform.ts` | Browser globals, UI or mailbox packages; `process.platform` and `process.arch` outside `platform.ts` |
 | `apps/browser-extension` | Wires the parts together (`src/bootstrap/create-extension-session.ts`); browser APIs only in `src/platform/` and the entry points. The helper app's methods (`src/platform/ai-connection.ts`, `helper-client.ts`, native messaging) stay here | `chrome` and `browser` globals in `composables`, `mounting`, `bootstrap`, `development` |
+| `apps/outlook-addin` | The Outlook add-in's task pane (Vite and Vue): `src/bootstrap/create-addin-session.ts` wires the session, the connector and the API key service in one page; `src/platform/` holds Office.js (`office-host.ts`), storage and the clipboard; `build/` generates the manifest and the Content Security Policy. See [Outlook add-in](./OUTLOOK_ADDIN.md) | `Office` outside `src/platform/`; `chrome`, `browser` |
 
 Dependencies are passed as function parameters. There is no dependency injection library, plugin loader or global event bus.
 
@@ -364,6 +372,7 @@ Rules for live inspection:
 | Panel session (controllers, settings store, appearance) | `tests/integration/session/` | Vitest with a fake connector |
 | Extension platform (messaging, AI connection, locales) | `tests/integration/extension/` | Vitest |
 | Chromium extension | `tests/e2e/extension-chromium/` | Playwright with the test build |
+| Outlook add-in task pane | `tests/e2e/outlook-addin/` | Playwright with the production build, the in-memory Office.js and a stubbed provider |
 | Firefox extension | `tests/e2e/extension-firefox/run-smoke.mjs` | WebDriver BiDi, headless |
 | Live Outlook and Gmail (manual) | `tests/manual/live/` | WebDriver BiDi and a persistent Firefox profile |
 | Release checklist (manual) | [Manual testing](./MANUAL_TESTING.md) | Clean machines |

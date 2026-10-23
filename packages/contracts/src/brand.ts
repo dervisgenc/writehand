@@ -19,6 +19,15 @@ export const FIREFOX_EXTENSION_ID = 'writehand@dervisgenc.com';
  */
 export const CHROMIUM_EXTENSION_IDS: readonly string[] = [];
 
+/**
+ * The Outlook add-in's ID in its manifest. It never changes once a manifest has been given out:
+ * Outlook treats another ID as another add-in, which users would have to install again.
+ */
+export const OUTLOOK_ADDIN_ID = '065738bd-ff6b-4b84-8131-53b192cafbe9';
+
+/** Publisher of the Outlook add-in, shown in Outlook's add-in dialog. */
+export const OUTLOOK_ADDIN_PROVIDER_NAME = 'Derviş Genç';
+
 /** Program name of the helper app; its install and data folders use the same name. */
 export const HELPER_COMMAND = 'writehand';
 

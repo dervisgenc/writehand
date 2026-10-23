@@ -12,6 +12,8 @@ Writehand has two parts that are released together from this repository: the bro
 
 Security fixes are released as a new version; there are no separate patch branches.
 
+The Outlook add-in is in development and not released; reports about it are welcome and are handled the same way.
+
 ## Reporting a vulnerability
 
 Please report vulnerabilities **privately** through GitHub: open the repository's **Security** tab and select **Report a vulnerability** ([direct link](https://github.com/dervisgenc/writehand/security/advisories/new)). Do not open a public issue, pull request or discussion for a suspected vulnerability.
@@ -27,8 +29,9 @@ In scope:
 - **Browser extension** (`apps/browser-extension`): message validation between extension parts, what is read from Outlook on the web and Gmail pages, what is written to drafts, settings storage, API key storage and the requests to API key providers (`packages/ai-chat-completions`, `@writehand/ai-openai/api-key`).
 - **Helper app** (`apps/ai-companion` and the provider packages): the native messaging protocol, ChatGPT sign-in (loopback callback, token handling), credential storage, how Claude Code is started, update download and verification.
 - **Installation and release**: `install.sh`, `install.ps1`, the helper app's `install`, `uninstall` and `update` commands, release archives, `SHA256SUMS` and its signature.
+- **Outlook add-in** (`apps/outlook-addin`, `packages/mail-connectors/outlook-addin`): the task pane page and its Content Security Policy, what is read from and written to the open item through Office.js, API key storage in the add-in's origin, the manifest and its permission.
 
-Out of scope: vulnerabilities in Outlook on the web, Gmail, the OpenAI, Anthropic, Groq or OpenRouter services, Claude Code itself, browsers, or a computer that is already compromised.
+Out of scope: vulnerabilities in Outlook on the web, Gmail, the Outlook applications, Office.js, the OpenAI, Anthropic, Groq or OpenRouter services, Claude Code itself, browsers, or a computer that is already compromised.
 
 ## Threat model
 
@@ -40,3 +43,10 @@ Out of scope: vulnerabilities in Outlook on the web, Gmail, the OpenAI, Anthropi
 - **Only Writehand can start the helper.** The browser starts the helper app only for the extension IDs listed in its registration, and the helper accepts account and update commands only from the extension's own pages.
 - **Updates are verified.** The helper app downloads updates only from this repository's releases and installs them only if `SHA256SUMS` carries a valid Ed25519 signature from the release key built into the helper app and the archive matches its checksum. Release files also carry GitHub build provenance attestations.
 - **No administrator rights.** Installation, updates and removal touch only your user account's folders and (on Windows) your own registry keys.
+
+The Outlook add-in (in development) differs in these points:
+
+- **It cannot send.** Office.js has no call that sends an email; the add-in writes only into the open draft after you approve the preview, or opens a new reply draft (`displayReplyFormAsync`). Its manifest asks for `ReadWriteItem` on messages only, with no event-based activation and no on-send handler.
+- **Email is parsed, never rendered.** The body HTML Office.js returns is parsed into a detached document (`DOMParser`), where scripts do not run and nothing loads; only its text is used.
+- **The page that holds the key is loaded from its host every time.** There is no separate background: the task pane decrypts the key in the same page that reads the open email, and that page's code comes from the add-in's web host on each open, without store review. Whoever controls that host controls the add-in. The add-in is therefore served from an origin that hosts nothing else, and its Content Security Policy allows scripts only from that origin and Office.js's CDN and connections only to the three providers. Keys with a spending limit are recommended.
+- **Storage is per Outlook application.** The encrypted key and settings live in the add-in origin's storage in each Outlook application, under Office's partition key where Office provides one; roaming settings and the mailbox are never used.

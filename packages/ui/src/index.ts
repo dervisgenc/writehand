@@ -6,6 +6,8 @@ export { default as ContextMessageCard } from './components/ContextMessageCard.v
 export { default as InlineAssistant } from './components/InlineAssistant.vue';
 export { default as RefineBar } from './components/RefineBar.vue';
 export { default as RichPreview } from './components/RichPreview.vue';
+export { default as SettingsForm } from './components/SettingsForm.vue';
+export type { SettingsFormText } from './settings-text';
 export { default as LanguagePicker } from './components/LanguagePicker.vue';
 export { default as OperationSelector } from './components/OperationSelector.vue';
 export { default as ResultPreview } from './components/ResultPreview.vue';

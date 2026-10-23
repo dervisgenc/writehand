@@ -68,6 +68,7 @@ export default tseslint.config(
       '**/.output/**',
       '**/.wxt/**',
       '**/dist/**',
+      '**/dist-local/**',
       '**/coverage/**',
       'test-results/**',
       'playwright-report/**',
@@ -368,6 +369,19 @@ export default tseslint.config(
     },
   },
   {
+    // The Outlook add-in's task pane: Office.js is reached only through src/platform/.
+    files: ['apps/outlook-addin/src/**/*.{ts,vue}'],
+    ignores: ['apps/outlook-addin/src/platform/**'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        'chrome',
+        'browser',
+        { name: 'Office', message: 'Office.js is used only in apps/outlook-addin/src/platform/.' },
+      ],
+    },
+  },
+  {
     // Browser APIs in the extension are kept under platform/.
     files: ['apps/browser-extension/src/{composables,mounting,bootstrap,development}/**/*.{ts,vue}'],
     rules: {
@@ -490,6 +504,8 @@ export default tseslint.config(
       'apps/ai-companion/scripts/*.mjs',
       '*.config.{js,ts}',
       'apps/browser-extension/*.config.ts',
+      'apps/outlook-addin/vite.config.ts',
+      'apps/outlook-addin/build/**/*.ts',
     ],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
     rules: {

@@ -4,9 +4,9 @@ import { z } from 'zod';
 export const SECRETS_STORAGE_KEY = 'secrets';
 
 /**
- * Keeps the vault's encryption key. The key is a non-extractable AES-GCM key in the
- * extension's own IndexedDB: web pages and content scripts cannot open that database, and no
- * script can export the key's bytes.
+ * Keeps the vault's encryption key. The key is a non-extractable AES-GCM key in the IndexedDB of
+ * the origin that uses the vault: the extension's own (web pages and content scripts cannot open
+ * it) or the Outlook add-in's hosting origin. No script can export the key's bytes.
  */
 export interface EncryptionKeyStore {
   load(): Promise<CryptoKey | null>;
@@ -15,8 +15,10 @@ export interface EncryptionKeyStore {
 }
 
 /**
- * Secrets (API keys) at rest. Only the background uses the vault; it never returns a secret to
- * a page. `storage.local`, which content scripts can read, holds only ciphertext.
+ * Secrets (API keys) at rest. Only the code that sends a key to its provider uses the vault (the
+ * extension's background, the add-in's task pane); the UI never receives a secret. The storage
+ * area (`storage.local`, which content scripts can read, or the add-in's `localStorage`) holds
+ * only ciphertext.
  */
 export interface SecretVault {
   /** Names that have a saved secret; reads no secret. */

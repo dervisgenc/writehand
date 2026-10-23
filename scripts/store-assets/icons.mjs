@@ -7,6 +7,14 @@ import { ROOT, STORE_DIR } from './harness.mjs';
 
 const BRAND = resolve(ROOT, 'assets/brand');
 const EXTENSION_ICONS = resolve(ROOT, 'apps/browser-extension/public/icon');
+const ADDIN_ICONS = resolve(ROOT, 'apps/outlook-addin/public/assets');
+
+/** The Outlook add-in: ribbon button (16, 32, 80), add-in dialog (64) and high resolution (128). */
+export const ADDIN_OUTPUTS = [16, 32, 64, 80, 128].map((size) => ({
+  path: resolve(ADDIN_ICONS, `icon-${size}.png`),
+  size,
+  padding: 0,
+}));
 
 /** Padding: the Chrome Web Store wants a 96 px drawing with a 16 px transparent border in its 128 px icon. */
 const OUTPUTS = [
@@ -25,10 +33,10 @@ export async function iconDataUri(variant = 'writehand-icon') {
   return `data:image/svg+xml;base64,${svg.toString('base64')}`;
 }
 
-export async function renderIcons(browser) {
+export async function renderIcons(browser, outputs = [...OUTPUTS, ...ADDIN_OUTPUTS]) {
   const sources = { large: await iconDataUri(), small: await iconDataUri('writehand-icon-small') };
   const page = await browser.newPage();
-  for (const { path, size, padding } of OUTPUTS) {
+  for (const { path, size, padding } of outputs) {
     await page.setViewportSize({ width: size, height: size });
     const source = size <= 32 ? sources.small : sources.large;
     await page.setContent(
@@ -38,5 +46,5 @@ export async function renderIcons(browser) {
     await writeFile(path, await page.screenshot({ omitBackground: true }));
   }
   await page.close();
-  return OUTPUTS.map((output) => output.path);
+  return outputs.map((output) => output.path);
 }

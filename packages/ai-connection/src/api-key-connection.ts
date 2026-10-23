@@ -28,7 +28,10 @@ export interface ApiKeyProvider {
   ): Promise<Result<string, AppError>>;
 }
 
-/** Whether the browser lets the extension reach a provider (its optional host permission). */
+/**
+ * Whether the page may reach a provider: the extension's optional host permission. The add-in's
+ * Content Security Policy always allows the three providers.
+ */
 export type ProviderAccess = (provider: ApiProvider) => Promise<boolean>;
 
 /** Ready to generate: a saved key, access to its provider and a chosen model. */
@@ -37,8 +40,9 @@ export function apiKeyReady(status: ApiKeyStatus): boolean {
 }
 
 /**
- * The API key method, run entirely in the background: no helper app is involved. Keys are kept
- * in the vault and sent only to their own provider; pages learn only which providers have one.
+ * The API key method, run where the keys are kept (the extension's background, the add-in's task
+ * pane): no helper app is involved. Keys are kept in the vault and sent only to their own
+ * provider; the UI learns only which providers have one.
  */
 export function createApiKeyConnection(deps: {
   store: AiConnectionStore;
@@ -46,7 +50,7 @@ export function createApiKeyConnection(deps: {
   providers: Readonly<Record<ApiProvider, ApiKeyProvider>>;
   access: ProviderAccess;
 }) {
-  // Model lists loaded with the saved keys while the background runs; never persisted.
+  // Model lists loaded with the saved keys while the page runs; never persisted.
   const catalogs = new Map<ApiProvider, AiModel[]>();
 
   const vaultStep = async <T>(step: () => Promise<T>): Promise<Result<T, AppError>> => {

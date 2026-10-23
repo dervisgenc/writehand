@@ -7,9 +7,19 @@ export function isEditableElement(element: HTMLElement): boolean {
   return element.isContentEditable !== false;
 }
 
+/**
+ * Whether the element belongs to a document that is laid out. A document parsed with `DOMParser`
+ * has no window and no layout: `checkVisibility` reports every element of it as hidden.
+ */
+export function isRendered(element: Element): boolean {
+  return element.isConnected && element.ownerDocument.defaultView !== null;
+}
+
 /** Visible on screen; environments without `checkVisibility` (the test DOM) count it as visible. */
 export function isVisibleElement(element: HTMLElement): boolean {
-  return typeof element.checkVisibility === 'function' ? element.checkVisibility() : true;
+  return typeof element.checkVisibility === 'function' && isRendered(element)
+    ? element.checkVisibility()
+    : true;
 }
 
 /** Keeps only the outermost elements: a match nested inside another match is dropped. */
@@ -32,7 +42,7 @@ export function innermostElements<T extends Element>(elements: readonly T[]): T[
  * `display: none` on the element and its ancestors.
  */
 export function isRenderedElement(element: HTMLElement): boolean {
-  if (typeof element.checkVisibility === 'function' && element.isConnected) {
+  if (typeof element.checkVisibility === 'function' && isRendered(element)) {
     return element.checkVisibility();
   }
   for (let current: HTMLElement | null = element; current !== null; current = current.parentElement) {

@@ -2,6 +2,7 @@ node_modules/
 .output/
 .wxt/
 dist/
+dist-local/
 coverage/
 test-results/
 playwright-report/

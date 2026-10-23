@@ -1,5 +1,5 @@
 import { PRODUCT_NAME, UI_LANGUAGES } from '@writehand/contracts';
-import { countWith, manifestMessages, textFor, uiLanguageFor } from '@writehand/locales';
+import { addinTextFor, countWith, manifestMessages, textFor, uiLanguageFor } from '@writehand/locales';
 import { describe, expect, it } from 'vitest';
 
 /** The plain strings in the text tree with their paths (function-valued texts excluded). */
@@ -60,6 +60,35 @@ describe('UI languages', () => {
     for (const language of UI_LANGUAGES) {
       const hardCoded = strings(textFor(language)).filter(([, value]) => value.includes('Email Writer'));
       expect(hardCoded, language).toEqual([]);
+    }
+  });
+
+  it.each(UI_LANGUAGES)(
+    '%s: the Outlook add-in has its own text, translated, without empty strings',
+    (language) => {
+      const text = addinTextFor(language);
+      const english = new Map(strings(addinTextFor('en').addin));
+
+      expect(text.ui.locale).toBe(language);
+      for (const [path, value] of strings(text.addin)) {
+        expect(value.trim(), path).not.toBe('');
+        if (language !== 'en') expect(value.length > 30 && english.get(path) === value, path).toBe(false);
+        expect(value, path).not.toMatch(/pnpm |docs\/|\.md\b/);
+      }
+      // The add-in's sentences about the key speak of Outlook, not of the browser.
+      expect(text.ui.ai.keySaved('Groq')).not.toBe(textFor(language).ui.ai.keySaved('Groq'));
+      expect(text.ui.errors.CLIPBOARD_UNAVAILABLE).toBe(text.addin.errors.CLIPBOARD_UNAVAILABLE);
+    },
+  );
+
+  it('keeps the Outlook manifest texts within the manifest limits', () => {
+    for (const language of UI_LANGUAGES) {
+      const { manifest } = addinTextFor(language).addin;
+      // DisplayName, ShortStrings: 125 characters; Description, LongStrings: 250 characters.
+      expect(manifest.description.length, language).toBeLessThanOrEqual(250);
+      expect(manifest.buttonTooltip.length, language).toBeLessThanOrEqual(250);
+      expect(manifest.groupLabel.length, language).toBeLessThanOrEqual(125);
+      expect(manifest.buttonLabel.length, language).toBeLessThanOrEqual(125);
     }
   });
 

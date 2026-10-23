@@ -139,7 +139,9 @@ describe('Outlook add-in connector: the open item', () => {
 
 describe('Outlook add-in connector: reading the body', () => {
   it('separates the user region of a web reply draft from its signature and quote', async () => {
-    const { connector } = setup(draft(WEB_REPLY_DRAFT));
+    const { connector, controls } = setup(draft(WEB_REPLY_DRAFT));
+    // Office.js returns the email's style blocks too; they never reach the text.
+    expect(controls.bodyHtml()).toContain('<style');
     const snapshot = await connector.readComposer(composerOf(connector));
     if (!snapshot.ok) throw new Error(snapshot.error.code);
 
