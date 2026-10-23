@@ -59,7 +59,7 @@ for (const file of existsSync(assets) ? readdirSync(assets) : []) {
   if (file.endsWith('.map')) fail(`assets/${file}: source maps are not shipped`);
   if (!/\.(js|css)$/.test(file)) continue;
   const code = readFileSync(join(assets, file), 'utf8');
-  for (const marker of ['localhost:', '127.0.0.1', '/@vite/client', 'sourceMappingURL']) {
+  for (const marker of ['localhost:', '127.0.0.1', '/@vite/client', 'sourceMappingURL', 'sample-model']) {
     if (code.includes(marker)) fail(`assets/${file}: contains development marker "${marker}"`);
   }
 }

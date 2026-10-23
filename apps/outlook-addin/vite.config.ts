@@ -28,7 +28,8 @@ function devCertificate() {
  *   only when `WRITEHAND_ADDIN_ORIGIN` names the hosting origin.
  */
 export default defineConfig(({ command, mode }) => {
-  const local = mode === 'localhost';
+  // `localhost-sample`: the same with local sample providers, for real clients without an AI account.
+  const local = mode === 'localhost' || mode === 'localhost-sample';
   const origin =
     command === 'serve' || local ? DEV_ORIGIN : productionOrigin(process.env.WRITEHAND_ADDIN_ORIGIN);
   const https = devCertificate();

@@ -8,6 +8,7 @@
     "dev": "vite --configLoader runner",
     "build": "vite build --configLoader runner",
     "build:local": "vite build --configLoader runner --mode localhost",
+    "build:sample": "vite build --configLoader runner --mode localhost-sample",
     "serve": "vite preview --configLoader runner --mode localhost",
     "typecheck": "vue-tsc -p tsconfig.json",
     "certs": "office-addin-dev-certs install"

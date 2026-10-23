@@ -35,6 +35,7 @@
     "addin:dev": "pnpm --filter @writehand/outlook-addin-app dev",
     "addin:build": "pnpm --filter @writehand/outlook-addin-app build",
     "addin:build:local": "pnpm --filter @writehand/outlook-addin-app build:local",
+    "addin:build:sample": "pnpm --filter @writehand/outlook-addin-app build:sample",
     "addin:serve": "pnpm --filter @writehand/outlook-addin-app serve",
     "addin:outlook": "node tests/manual/live/addin-outlook.mjs",
     "addin:validate": "office-addin-manifest validate apps/outlook-addin/dist-local/manifest.xml",

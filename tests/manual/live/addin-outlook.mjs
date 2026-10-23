@@ -10,7 +10,7 @@
 // The new Outlook loads the add-in installed for the mailbox (sideloaded from
 // apps/outlook-addin/dist-local/manifest.xml; see docs/OUTLOOK_ADDIN.md).
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 
@@ -28,9 +28,11 @@ const { values } = parseArgs({
 });
 
 const system32 = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32');
-// The app execution alias of the new Outlook (an MSIX package).
-const olk = join(process.env.LOCALAPPDATA ?? '', 'Microsoft', 'WindowsApps', 'olk.exe');
-if (!existsSync(olk)) {
+// The app execution alias of the new Outlook (an MSIX package). It is a reparse point that
+// `stat` cannot follow, so its folder is listed instead.
+const aliases = join(process.env.LOCALAPPDATA ?? '', 'Microsoft', 'WindowsApps');
+const olk = join(aliases, 'olk.exe');
+if (!readdirSync(aliases).includes('olk.exe')) {
   console.error(`The new Outlook was not found (${olk}). Install it from the Microsoft Store.`);
   process.exit(1);
 }

@@ -6,9 +6,16 @@ import {
   createDirectProcessor,
   createIndexedDbKeyStore,
   createSecretVault,
+  type ApiKeyProvider,
   type ApiKeyService,
 } from '@writehand/ai-connection';
-import { type MailConnector, type Settings, type SettingsChanges } from '@writehand/contracts';
+import {
+  type ApiProvider,
+  type MailConnector,
+  type Settings,
+  type SettingsChanges,
+  type TextProcessor,
+} from '@writehand/contracts';
 import { createSession } from '@writehand/core';
 import { createOutlookAddinConnector } from '@writehand/outlook-addin';
 import {
@@ -38,6 +45,19 @@ export interface AddinSession {
   /** Opens the panel's work for the item Outlook shows: its draft, its email, or nothing yet. */
   openForCurrentItem(): void;
   dispose(): void;
+}
+
+/**
+ * `pnpm addin:build:sample` builds the pane for checks in a real Outlook without an AI account:
+ * local providers return labeled samples and nothing goes over the network. Other builds strip
+ * that module (the mode is replaced at build time).
+ */
+const SAMPLE_BUILD = import.meta.env.MODE === 'localhost-sample';
+
+async function loadProviders(): Promise<Readonly<Record<ApiProvider, ApiKeyProvider>>> {
+  if (!SAMPLE_BUILD) return createApiKeyProviders();
+  const { createSampleProviders } = await import('../development/sample-providers');
+  return createSampleProviders();
 }
 
 /**
@@ -79,14 +99,24 @@ export async function createAddinSession(
       area,
       keys: createIndexedDbKeyStore(indexedDB, keyDatabaseName(host.partitionKey)),
     }),
-    providers: createApiKeyProviders(),
+    providers: await loadProviders(),
     // The page's Content Security Policy allows exactly the three providers.
     access: async () => true,
   });
   const ai = createApiKeyService({ store: connectionStore, apiKeys });
-  const processor = createDirectProcessor(ai, async () => ({
+  const direct = createDirectProcessor(ai, async () => ({
     standingInstructions: (await settingsStore.read()).settings.writingInstructions,
   }));
+  // The sample build labels its results as samples, as the extension's test build does.
+  const processor: TextProcessor = SAMPLE_BUILD
+    ? {
+        kind: 'development-sample',
+        process: async (action, signal) => {
+          const result = await direct.process(action, signal);
+          return result.ok ? { ...result, value: { ...result.value, sample: true } } : result;
+        },
+      }
+    : direct;
 
   const connector = createOutlookAddinConnector({ mailbox: host.mailbox, formatDate });
   await whenPageReady(connector);
