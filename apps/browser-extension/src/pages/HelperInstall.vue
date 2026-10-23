@@ -7,11 +7,11 @@ import {
   HOST_OPERATING_SYSTEMS,
   type HostOperatingSystem,
 } from '@writehand/contracts';
+import type { ExtensionText } from '@writehand/locales';
 import { AppIcon, CommandBox } from '@writehand/ui';
 import { computed, onMounted, ref, useId } from 'vue';
 
 import { useHelper } from '../composables/use-helper';
-import type { ExtensionText } from '../locales';
 import { copyText } from '../platform/clipboard';
 import { extensionId, operatingSystem } from '../platform/extension-browser';
 

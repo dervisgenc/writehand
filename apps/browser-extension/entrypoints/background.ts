@@ -1,4 +1,12 @@
+import {
+  createAiConnectionStore,
+  createApiKeyConnection,
+  createApiKeyProviders,
+  createIndexedDbKeyStore,
+  createSecretVault,
+} from '@writehand/ai-connection';
 import { ok } from '@writehand/contracts';
+import { createSettingsStore } from '@writehand/session';
 import { browser, defineBackground } from '#imports';
 
 import { reportDiagnostic } from '../src/platform/diagnostics';
@@ -14,17 +22,11 @@ import {
 } from '../src/platform/extension-browser';
 import { createAiHandlers } from '../src/platform/ai-background';
 import { createAiConnection } from '../src/platform/ai-connection';
-import { createAiConnectionStore } from '../src/platform/ai-connection-store';
 import { createAiSenderPolicy } from '../src/platform/ai-sender-policy';
-import { createApiKeyConnection } from '../src/platform/api-key-connection';
-import { createApiKeyProviders } from '../src/platform/api-key-providers';
 import { createHelperClient } from '../src/platform/helper-client';
-import { createIndexedDbKeyStore } from '../src/platform/indexed-db-key-store';
 import { createNativeClient } from '../src/platform/native-client';
-import { createSecretVault } from '../src/platform/secret-vault';
 import { isSupportedUrl } from '../src/platform/extension-client';
 import { createRuntimeHandler, toMessageListener } from '../src/platform/runtime-messaging';
-import { createSettingsStore } from '../src/platform/settings-store';
 
 /**
  * Validated message routing for setup/settings and the AI connection. Generation text stays

@@ -2,9 +2,9 @@ import '@writehand/ui/styles/panel.css';
 import '@writehand/ui/styles/pages.css';
 
 import { DEFAULT_SETTINGS } from '@writehand/contracts';
+import { textFor, uiLanguageFor } from '@writehand/locales';
 import { createApp } from 'vue';
 
-import { textFor, uiLanguageFor } from '../../src/locales';
 import { fetchSettings } from '../../src/platform/extension-client';
 import PopupApp from './PopupApp.vue';
 

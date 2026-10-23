@@ -107,13 +107,16 @@ Releases are built by GitHub Actions from `vX.Y.Z` tags; see [releasing](./docs/
 ## Project structure
 
 ```text
-apps/browser-extension/        WXT extension: entry points, welcome wizard, controllers, mounting, platform helpers, locales
+apps/browser-extension/        WXT extension: entry points, welcome wizard, mounting, platform helpers
 apps/ai-companion/             Helper app: native messaging host, installer, updater, install scripts
 packages/ai-openai/            ChatGPT OAuth (Sign in with ChatGPT, Codex sign-in), model discovery and Responses adapter (also for OpenAI API keys)
 packages/ai-chat-completions/  Groq and OpenRouter API keys through OpenAI-compatible Chat Completions
 packages/ai-claude-code/       Runs the user's Claude Code in a restricted print mode
 packages/contracts/            Shared data and action definitions, boundary schemas, brand, AI prompt
 packages/core/                 Context, action preparation, session state and write preconditions (pure functions)
+packages/session/              Panel session shared by the apps: controllers, opened-message history, settings store, Vue bridge
+packages/ai-connection/        API key method shared by the apps: encrypted key vault, connection choices, providers
+packages/locales/              User-facing text in the five interface languages
 packages/email-format/         Limited Markdown to email-safe HTML, plain text and verification text
 packages/ui/                   Vue panel, toolbar, result card, settings and setup components
 packages/mail-connectors/

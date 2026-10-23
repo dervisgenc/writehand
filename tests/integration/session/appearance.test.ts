@@ -1,6 +1,5 @@
+import { resolveAppearance } from '@writehand/session';
 import { describe, expect, it } from 'vitest';
-
-import { resolveAppearance } from '../../../apps/browser-extension/src/mounting/appearance';
 
 describe('extension appearance', () => {
   const outlookDark = {

@@ -1,9 +1,8 @@
 <script setup lang="ts">
+import { usePanelSession, type Appearance, type PanelSessionDependencies } from '@writehand/session';
 import { provideUiText, WriterPanel, type UiText } from '@writehand/ui';
 import { toRef, type Ref } from 'vue';
 
-import { usePanelSession, type PanelSessionDependencies } from '../composables/use-panel-session';
-import type { Appearance } from './appearance';
 import AiConnectionIndicator from './AiConnectionIndicator.vue';
 
 const props = defineProps<{

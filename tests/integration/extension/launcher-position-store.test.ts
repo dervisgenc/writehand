@@ -1,10 +1,10 @@
+import type { StorageArea } from '@writehand/contracts';
 import { describe, expect, it } from 'vitest';
 
 import {
   createLauncherPositionStore,
   LAUNCHER_POSITIONS_STORAGE_KEY,
 } from '../../../apps/browser-extension/src/platform/launcher-position-store';
-import type { StorageArea } from '../../../apps/browser-extension/src/platform/settings-store';
 
 function memoryArea(initial: Record<string, unknown> = {}): StorageArea & { data: Record<string, unknown> } {
   const data = { ...initial };

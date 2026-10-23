@@ -38,6 +38,6 @@ The program and its third-party licenses are written to `apps/ai-companion/dist/
 
 | Path | Contents |
 | --- | --- |
-| `apps/browser-extension` | Extension entry points, settings, welcome wizard, locales |
+| `apps/browser-extension` | Extension entry points, settings, welcome wizard |
 | `packages/*` | Shared contracts, core logic, UI components, Outlook connector, email formatting, AI providers |
 | `apps/ai-companion` | Helper app (native messaging host, installer, updater) |

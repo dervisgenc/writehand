@@ -13,9 +13,13 @@ import {
   type HelperStatus,
   type Result,
 } from '@writehand/contracts';
+import {
+  apiKeyReady,
+  type AiConnectionPreferences,
+  type AiConnectionStore,
+  type ApiKeyConnection,
+} from '@writehand/ai-connection';
 
-import type { AiConnectionPreferences, AiConnectionStore } from './ai-connection-store';
-import { apiKeyReady, type ApiKeyConnection } from './api-key-connection';
 import type { HelperClient } from './helper-client';
 
 /** The same limits as the helper app's own generations; the helper app enforces its timeout itself. */

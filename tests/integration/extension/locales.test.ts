@@ -1,8 +1,6 @@
 import { PRODUCT_NAME, UI_LANGUAGES } from '@writehand/contracts';
+import { countWith, manifestMessages, textFor, uiLanguageFor } from '@writehand/locales';
 import { describe, expect, it } from 'vitest';
-
-import { manifestMessages, textFor, uiLanguageFor } from '../../../apps/browser-extension/src/locales';
-import { countWith } from '../../../apps/browser-extension/src/locales/plural';
 
 /** The plain strings in the text tree with their paths (function-valued texts excluded). */
 function strings(value: unknown, path = ''): [string, string][] {

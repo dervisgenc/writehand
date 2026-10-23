@@ -1,13 +1,15 @@
 import { aiInputSchema, buildTaskPrompt, DEFAULT_SETTINGS, toAiInput } from '@writehand/contracts';
 import { createSession, deriveCapabilities } from '@writehand/core';
+import {
+  createActionController,
+  createApplyController,
+  createMessageHistory,
+  createPanelController,
+  createSessionStore,
+  toPanelView,
+} from '@writehand/session';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { createActionController } from '../../../apps/browser-extension/src/controllers/action-controller';
-import { createApplyController } from '../../../apps/browser-extension/src/controllers/apply-controller';
-import { createMessageHistory } from '../../../apps/browser-extension/src/controllers/message-history';
-import { createPanelController } from '../../../apps/browser-extension/src/controllers/panel-controller';
-import { toPanelView } from '../../../apps/browser-extension/src/controllers/panel-view';
-import { createSessionStore } from '../../../apps/browser-extension/src/controllers/session-store';
 import { createFixtureProcessor } from '../../../apps/browser-extension/src/development/fixture-results';
 import { body, message, thread, threadB } from '../../fixtures/synthetic-mail/threads';
 import { fixedClock, sequentialIds } from '../../unit/test-dependencies';

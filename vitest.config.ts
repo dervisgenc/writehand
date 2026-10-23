@@ -34,6 +34,13 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'session',
+          environment: 'jsdom',
+          include: ['tests/integration/session/**/*.test.ts'],
+        },
+      },
+      {
+        test: {
           name: 'extension',
           environment: 'jsdom',
           include: ['tests/integration/extension/**/*.test.ts'],

@@ -11,12 +11,12 @@ import { ACTION_LIMITS, deriveCapabilities } from '@writehand/core';
 import type { SourceReloadKind } from '@writehand/ui';
 import { computed, onScopeDispose, shallowRef } from 'vue';
 
-import type { ActionController } from '../controllers/action-controller';
-import type { ApplyController } from '../controllers/apply-controller';
-import type { MessageHistoryStore } from '../controllers/message-history';
-import type { PanelController } from '../controllers/panel-controller';
-import { sessionComposer, toPanelView, type TransientUiState } from '../controllers/panel-view';
-import type { SessionStore } from '../controllers/session-store';
+import type { ActionController } from './controllers/action-controller';
+import type { ApplyController } from './controllers/apply-controller';
+import type { MessageHistoryStore } from './controllers/message-history';
+import type { PanelController } from './controllers/panel-controller';
+import { sessionComposer, toPanelView, type TransientUiState } from './controllers/panel-view';
+import type { SessionStore } from './controllers/session-store';
 
 export interface PanelSessionDependencies {
   readonly store: SessionStore;

@@ -4,10 +4,9 @@ import {
   DEFAULT_API_PROVIDER,
   type AiMode,
   type ApiProvider,
+  type StorageArea,
 } from '@writehand/contracts';
 import { z } from 'zod';
-
-import type { StorageArea } from './settings-store';
 
 export const AI_CONNECTION_STORAGE_KEY = 'aiConnection';
 

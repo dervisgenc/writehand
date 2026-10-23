@@ -1,10 +1,10 @@
 import type { TextProcessor } from '@writehand/contracts';
+import { createSettingsStore } from '@writehand/session';
 import type { ContentScriptContext } from '#imports';
 
 import { createConnectedProcessor } from '../platform/connected-processor';
 import { reportDiagnostic } from '../platform/diagnostics';
 import { localStorageArea, sendToBackground } from '../platform/extension-browser';
-import { createSettingsStore } from '../platform/settings-store';
 import { createExtensionSession } from './create-extension-session';
 import type { MailPageProvider } from './mail-provider';
 

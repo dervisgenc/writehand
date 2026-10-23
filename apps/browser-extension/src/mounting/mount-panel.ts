@@ -1,10 +1,9 @@
+import type { Appearance, PanelSessionDependencies } from '@writehand/session';
 import type { UiText } from '@writehand/ui';
 import { createApp, ref, type Ref } from 'vue';
 import { createShadowRootUi, type ContentScriptContext } from '#imports';
 
 import { OWN_UI_ATTRIBUTE } from '../bootstrap/mail-provider';
-import type { PanelSessionDependencies } from '../composables/use-panel-session';
-import type { Appearance } from './appearance';
 import PanelHost from './PanelHost.vue';
 
 /**

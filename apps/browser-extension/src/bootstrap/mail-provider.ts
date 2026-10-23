@@ -6,8 +6,7 @@ import type {
   SiteId,
   ThreadRef,
 } from '@writehand/contracts';
-
-import type { UiSkin } from '../mounting/appearance';
+import type { UiSkin } from '@writehand/session';
 
 /** Marks the extension's own UI roots so they are excluded from page observation. */
 export const OWN_UI_ATTRIBUTE = 'data-writehand-ui';

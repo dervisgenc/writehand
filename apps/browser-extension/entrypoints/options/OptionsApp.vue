@@ -14,13 +14,13 @@ import {
   type SiteId,
   type TargetLanguage,
 } from '@writehand/contracts';
+import { textFor, uiLanguageFor } from '@writehand/locales';
+import { parseStoredSettings, SETTINGS_STORAGE_KEY } from '@writehand/session';
 import { AppIcon, ExtensionPage, LanguagePicker, languageLabel, provideUiText } from '@writehand/ui';
 import { computed, onMounted, onUnmounted, ref, shallowRef, useId, watchEffect } from 'vue';
 
-import { textFor, uiLanguageFor } from '../../src/locales';
 import { brandIconUrl, onSettingsStorageChanged } from '../../src/platform/extension-browser';
 import { fetchSettings, patchSettings } from '../../src/platform/extension-client';
-import { parseStoredSettings, SETTINGS_STORAGE_KEY } from '../../src/platform/settings-store';
 import AiSettings from '../../src/pages/AiSettings.vue';
 import HelperSettings from '../../src/pages/HelperSettings.vue';
 

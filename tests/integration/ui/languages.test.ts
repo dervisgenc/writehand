@@ -1,9 +1,8 @@
+import { tr } from '@writehand/locales';
 import { LanguagePicker, languageLabel, matchLanguage, provideUiText } from '@writehand/ui';
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import { defineComponent, h, ref, type Component } from 'vue';
-
-import { tr } from '../../../apps/browser-extension/src/locales/tr';
 
 describe('Language names and matching', () => {
   it('maps a name in the UI language, an English name or a code to the catalog code', () => {

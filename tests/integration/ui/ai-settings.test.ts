@@ -2,7 +2,7 @@ import { AiConnectionGuide, AiConnectionSettings } from '@writehand/ui';
 import type { AiMode, AiStatus, ApiKeyStatus, HelperStatus } from '@writehand/contracts';
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
-import { tr } from '../../../apps/browser-extension/src/locales/tr';
+import { tr } from '@writehand/locales';
 
 const disconnected: HelperStatus = {
   mode: 'chatgpt',

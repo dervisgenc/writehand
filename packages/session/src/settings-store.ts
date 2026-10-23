@@ -9,15 +9,10 @@ import {
   settingsV3Schema,
   type Settings,
   type SettingsChanges,
+  type StorageArea,
 } from '@writehand/contracts';
 
 export const SETTINGS_STORAGE_KEY = 'settings';
-
-/** The narrow slice of browser storage (`storage.local`) the extension's stores need. */
-export interface StorageArea {
-  get(key: string): Promise<Record<string, unknown>>;
-  set(items: Record<string, unknown>): Promise<void>;
-}
 
 export type StoredSettingsIssue = 'missing' | 'invalid' | 'migrated' | 'newer-schema' | null;
 

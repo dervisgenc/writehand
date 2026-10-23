@@ -132,7 +132,7 @@ After answering, the old host exits; the browser's next request starts the new p
 
 ## Connection methods
 
-Users choose a method in **Settings → AI connection** (or in the welcome wizard). The settings also contain a **Connection guide** for end users with requirements, steps and notes for each method; its text is in `apps/browser-extension/src/locales/ai-<language>.ts`.
+Users choose a method in **Settings → AI connection** (or in the welcome wizard). The settings also contain a **Connection guide** for end users with requirements, steps and notes for each method; its text is in `packages/locales/src/ai-<language>.ts`.
 
 | Method | Label | Runs in | Billing | Requirements |
 | --- | --- | --- | --- | --- |

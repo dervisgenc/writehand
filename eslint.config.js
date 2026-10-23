@@ -19,7 +19,13 @@ const INTERNAL_PACKAGES = [
   '@writehand/ai-claude-code',
   '@writehand/ai-chat-completions',
   '@writehand/email-format',
+  '@writehand/session',
+  '@writehand/ai-connection',
+  '@writehand/locales',
 ];
+
+/** Packages shared by the apps above the mail connectors; nothing below them may import them. */
+const APP_SHARED_PACKAGES = ['@writehand/session', '@writehand/ai-connection', '@writehand/locales'];
 
 /** Every mail connector; none of them imports another. */
 const MAIL_CONNECTOR_PACKAGES = ['@writehand/outlook-web', '@writehand/gmail-web'];
@@ -148,7 +154,16 @@ export default tseslint.config(
         'error',
         {
           paths: restrictImports(
-            ['vue', 'wxt', '#imports', 'zod', '@writehand/ui', '@writehand/outlook-web', '@writehand/core'],
+            [
+              'vue',
+              'wxt',
+              '#imports',
+              'zod',
+              '@writehand/ui',
+              '@writehand/outlook-web',
+              '@writehand/core',
+              ...APP_SHARED_PACKAGES,
+            ],
             'core depends only on @writehand/contracts.',
           ),
           patterns: [
@@ -168,7 +183,7 @@ export default tseslint.config(
         'error',
         {
           paths: restrictImports(
-            ['wxt', '#imports', '@writehand/outlook-web', '@writehand/core'],
+            ['wxt', '#imports', '@writehand/outlook-web', '@writehand/core', ...APP_SHARED_PACKAGES],
             'ui only receives view data and emits events.',
           ),
           patterns: [deepImportBan, { group: ['wxt/*'], message: 'ui does not use browser helpers.' }],
@@ -194,7 +209,15 @@ export default tseslint.config(
         'error',
         {
           paths: restrictImports(
-            ['vue', 'wxt', '#imports', '@writehand/ui', '@writehand/core', ...MAIL_CONNECTOR_PACKAGES],
+            [
+              'vue',
+              'wxt',
+              '#imports',
+              '@writehand/ui',
+              '@writehand/core',
+              ...APP_SHARED_PACKAGES,
+              ...MAIL_CONNECTOR_PACKAGES,
+            ],
             'A connector works only with contracts, mail-dom and the DOM.',
           ),
           patterns: [
@@ -221,6 +244,7 @@ export default tseslint.config(
               '@writehand/ui',
               '@writehand/core',
               '@writehand/mail-dom',
+              ...APP_SHARED_PACKAGES,
               ...MAIL_CONNECTOR_PACKAGES,
             ],
             'mail-dom works only with contracts and the DOM.',
@@ -238,10 +262,94 @@ export default tseslint.config(
     },
   },
   {
+    // session: the panel session both apps share. It reaches the mail page only through the
+    // connector, storage only through `StorageArea`, and the AI only through `TextProcessor`.
+    files: ['packages/session/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: restrictImports(
+            [
+              'wxt',
+              '#imports',
+              '@writehand/ai-connection',
+              '@writehand/locales',
+              '@writehand/mail-dom',
+              ...MAIL_CONNECTOR_PACKAGES,
+              ...AI_PROVIDER_PACKAGES,
+            ],
+            'session works with contracts, core, email-format, ui types and Vue only.',
+          ),
+          patterns: [deepImportBan, { group: ['wxt/*'], message: 'session does not use browser helpers.' }],
+        },
+      ],
+      'no-restricted-globals': ['error', ...browserGlobals, 'Office', 'fetch'],
+    },
+  },
+  {
+    // ai-connection: the API key method. No UI, no mailbox, no page globals; keys reach only
+    // their provider through the provider packages.
+    files: ['packages/ai-connection/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: restrictImports(
+            [
+              'vue',
+              'wxt',
+              '#imports',
+              'jose',
+              '@writehand/core',
+              '@writehand/ui',
+              '@writehand/session',
+              '@writehand/locales',
+              '@writehand/mail-dom',
+              ...MAIL_CONNECTOR_PACKAGES,
+            ],
+            'ai-connection depends only on contracts and the browser-safe provider packages.',
+          ),
+          patterns: [
+            deepImportBan,
+            { group: ['node:*'], message: 'ai-connection runs in browser pages; no Node.js modules.' },
+          ],
+        },
+      ],
+      'no-restricted-globals': ['error', ...browserGlobals, 'Office'],
+    },
+  },
+  {
+    // locales: text only; the types come from contracts and ui.
+    files: ['packages/locales/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: restrictImports(
+            [
+              'vue',
+              'wxt',
+              '#imports',
+              '@writehand/core',
+              '@writehand/session',
+              '@writehand/ai-connection',
+              '@writehand/mail-dom',
+              '@writehand/email-format',
+              ...MAIL_CONNECTOR_PACKAGES,
+              ...AI_PROVIDER_PACKAGES,
+            ],
+            'locales holds text; it imports only contracts and ui types.',
+          ),
+          patterns: [deepImportBan],
+        },
+      ],
+      'no-restricted-globals': ['error', ...browserGlobals, 'Office'],
+    },
+  },
+  {
     // Browser APIs in the extension are kept under platform/.
-    files: [
-      'apps/browser-extension/src/{controllers,composables,mounting,bootstrap,locales,development}/**/*.{ts,vue}',
-    ],
+    files: ['apps/browser-extension/src/{composables,mounting,bootstrap,development}/**/*.{ts,vue}'],
     rules: {
       'no-restricted-globals': ['error', 'chrome', 'browser'],
     },
@@ -259,7 +367,15 @@ export default tseslint.config(
         'error',
         {
           paths: restrictImports(
-            ['vue', 'wxt', '#imports', '@writehand/core', '@writehand/ui', '@writehand/outlook-web'],
+            [
+              'vue',
+              'wxt',
+              '#imports',
+              '@writehand/core',
+              '@writehand/ui',
+              '@writehand/outlook-web',
+              ...APP_SHARED_PACKAGES,
+            ],
             'AI modules do not depend on the UI or mailbox.',
           ),
           patterns: [deepImportBan],

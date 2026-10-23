@@ -4,11 +4,11 @@ import {
   HELPER_COMMAND,
   SITE_IDS,
 } from '@writehand/contracts';
+import { manifestMessages } from '@writehand/locales';
 import { defineConfig } from 'wxt';
 
 import { version } from '../../package.json';
 import { DEVELOPMENT_MATCHES, SITE_MATCHES } from './src/bootstrap/supported-sites';
-import { manifestMessages } from './src/locales';
 
 /**
  * Builds Manifest V3 packages for Chromium (service worker) and Firefox

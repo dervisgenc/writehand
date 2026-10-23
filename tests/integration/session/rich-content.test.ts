@@ -1,10 +1,7 @@
 import type { ApplyRequest } from '@writehand/contracts';
+import { clipboardContent, withRichContent } from '@writehand/session';
 import { describe, expect, it } from 'vitest';
 
-import {
-  clipboardContent,
-  withRichContent,
-} from '../../../apps/browser-extension/src/controllers/rich-content';
 import { scopeA } from '../../fixtures/synthetic-mail/threads';
 
 const composerRef = { scope: scopeA, composerKey: 'c1', threadKey: 'thread-a' };

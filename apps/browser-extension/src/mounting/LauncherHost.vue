@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Operation, TargetLanguage } from '@writehand/contracts';
 import { isSessionBusy } from '@writehand/core';
+import type { Appearance, PanelSessionDependencies, PanelSurface } from '@writehand/session';
 import {
   ComposeToolbar,
   provideUiText,
@@ -10,10 +11,7 @@ import {
 } from '@writehand/ui';
 import { computed, onScopeDispose, shallowRef, type Ref } from 'vue';
 
-import type { PanelSessionDependencies } from '../composables/use-panel-session';
-import type { PanelSurface } from '../controllers/panel-controller';
 import { requestOpenOptions } from '../platform/extension-client';
-import type { Appearance } from './appearance';
 import InlineAssistantHost from './InlineAssistantHost.vue';
 import type { LauncherTarget } from './mount-launchers';
 

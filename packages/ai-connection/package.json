@@ -1,0 +1,19 @@
+{
+  "name": "@writehand/ai-connection",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "The API key method shared by the browser extension and the Outlook add-in: encrypted key vault, connection choices and the Groq, OpenRouter and OpenAI providers",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@writehand/ai-chat-completions": "workspace:*",
+    "@writehand/ai-openai": "workspace:*",
+    "@writehand/contracts": "workspace:*",
+    "zod": "^4.6.7"
+  }
+}

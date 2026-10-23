@@ -1,6 +1,5 @@
+import type { StorageArea } from '@writehand/contracts';
 import { z } from 'zod';
-
-import type { StorageArea } from './settings-store';
 
 export const SECRETS_STORAGE_KEY = 'secrets';
 

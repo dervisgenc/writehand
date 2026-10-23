@@ -45,3 +45,5 @@ export function manifestMessages(): Record<UiLanguage, ManifestMessages> {
 }
 
 export type { ExtensionText, PopupStatusKey } from './extension-text';
+export { countWith } from './plural';
+export { de, en, es, fr, tr };

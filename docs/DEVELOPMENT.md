@@ -97,7 +97,12 @@ Things to know:
 
 ```mermaid
 flowchart TD
-    EXT[apps/browser-extension<br/>entry points, controllers, mounting, platform] --> CORE[packages/core]
+    EXT[apps/browser-extension<br/>entry points, mounting, platform] --> SESSION[packages/session]
+    EXT --> AICONN[packages/ai-connection]
+    EXT --> LOCALES[packages/locales]
+    SESSION --> CORE[packages/core]
+    SESSION --> UI
+    LOCALES --> UI
     EXT --> UI[packages/ui]
     EXT --> MAIL[packages/mail-connectors/outlook-web]
     EXT --> GMAIL[packages/mail-connectors/gmail-web]
@@ -108,8 +113,8 @@ flowchart TD
     CORE --> CONTRACTS[packages/contracts]
     UI --> CONTRACTS
     MAIL --> CONTRACTS
-    EXT --> OPENAI
-    EXT --> CHAT[packages/ai-chat-completions]
+    AICONN --> OPENAI
+    AICONN --> CHAT[packages/ai-chat-completions]
     HOST[apps/ai-companion<br/>helper app] --> OPENAI[packages/ai-openai]
     HOST --> CLAUDE[packages/ai-claude-code]
     HOST --> CONTRACTS
@@ -118,7 +123,7 @@ flowchart TD
     CLAUDE --> CONTRACTS
 ```
 
-The extension imports only the browser-safe part of `ai-openai` (`@writehand/ai-openai/api-key`: the Responses API, without OAuth or Node.js code).
+`ai-connection` imports only the browser-safe part of `ai-openai` (`@writehand/ai-openai/api-key`: the Responses API, without OAuth or Node.js code).
 
 | Package | Responsibility | Must not use (enforced by ESLint) |
 | --- | --- | --- |
@@ -128,12 +133,15 @@ The extension imports only the browser-safe part of `ai-openai` (`@writehand/ai-
 | `outlook-web` | Outlook on the web: page detection, the active conversation, reading messages, finding draft editors, theme. Every selector lives in `src/discovery/selectors.ts` | Vue, WXT, `core`, `ui`, other connectors, extension APIs, `window`, web storage |
 | `gmail-web` | Gmail on the web: page detection, the open conversation, reading messages, finding draft editors (inline replies, compose windows), theme. Every selector lives in `src/discovery/selectors.ts` | Vue, WXT, `core`, `ui`, other connectors, extension APIs, `window`, web storage |
 | `mail-dom` | What every web mail connector shares: text extraction, draft tracking (`createComposerRegistry`), selection capture, controlled writes, verification and undo, editor and page observation, opaque identities | Vue, WXT, `core`, `ui`, the connectors, extension APIs, `window`, web storage |
+| `session` | The panel session both apps share: the action, apply and panel controllers, the opened-message history, the session store, the panel view model, the Vue bridge (`usePanelSession`), the appearance resolver, the settings store over `StorageArea`, and the system clock and IDs | WXT, browser and page globals, `fetch`, `Office`, `ai-connection`, `locales`, `mail-dom`, the connectors, the AI provider packages |
+| `ai-connection` | The API key method: the encrypted key vault (`createSecretVault`, `createIndexedDbKeyStore`), the connection choices (`createAiConnectionStore`), the Groq, OpenRouter and OpenAI providers and `createApiKeyConnection` | Vue, WXT, browser page globals, `Office`, Node.js modules, `core`, `ui`, `session`, `locales`, `mail-dom`, the connectors |
+| `locales` | The user-facing text in the five interface languages, `textFor`, `uiLanguageFor`, `countWith` and the manifest messages | Vue, WXT, browser page globals, every internal package except `contracts` and `ui` (types) |
 | `email-format` | Parses the model's limited Markdown and produces email-safe HTML, plain text and the text used to verify a write (pure functions) | Vue, WXT, browser globals, other internal packages (Zod only) |
 | `ai-openai` | ChatGPT OAuth (PKCE, OIDC), model discovery, Responses API streaming, stable error codes; `api-key.ts` is the browser-safe entry for OpenAI API keys | Browser globals, UI or mailbox packages, the other provider packages; in the browser-safe files also Node.js modules and `jose` |
 | `ai-chat-completions` | Groq and OpenRouter: OpenAI-compatible Chat Completions streaming, model lists, free default models, stable error codes. Runs in the browser and in Node.js | Browser page globals, Node.js modules, UI or mailbox packages, the other provider packages |
 | `ai-claude-code` | Finds the user's Claude Code, reads its sign-in status and runs it in restricted print mode | Browser globals, UI or mailbox packages, the other provider package |
 | `apps/ai-companion` | The helper app: native messaging host, loopback sign-in, credential store, installer, updater. OS differences live only in `src/platform.ts` | Browser globals, UI or mailbox packages; `process.platform` and `process.arch` outside `platform.ts` |
-| `apps/browser-extension` | Wires the parts together (`src/bootstrap/create-extension-session.ts`); browser APIs only in `src/platform/` and the entry points | `chrome` and `browser` globals in `controllers`, `composables`, `mounting`, `bootstrap`, `locales`, `development` |
+| `apps/browser-extension` | Wires the parts together (`src/bootstrap/create-extension-session.ts`); browser APIs only in `src/platform/` and the entry points. The helper app's methods (`src/platform/ai-connection.ts`, `helper-client.ts`, native messaging) stay here | `chrome` and `browser` globals in `composables`, `mounting`, `bootstrap`, `development` |
 
 Dependencies are passed as function parameters. There is no dependency injection library, plugin loader or global event bus.
 
@@ -150,7 +158,7 @@ Dependencies are passed as function parameters. There is no dependency injection
 
 Messages between contexts are defined in `packages/contracts/src/runtime-messages.ts`: `GET_PAGE_STATUS`, `OPEN_PANEL`, `GET_SELECTOR_REPORT`, `GET_SETTINGS`, `PATCH_SETTINGS`, the `AI_*` requests and `HOST_INFO`, `HOST_UPDATE_CHECK` and `HOST_UPDATE` for the helper app. Every message is validated against its schema and checked against the sender the browser reports (`src/platform/ai-sender-policy.ts`): a content script on a mail page may only send `AI_SUMMARY`, `AI_GENERATE`, `AI_CANCEL` and `OPEN_OPTIONS`; account management, API keys and updates are accepted only from the extension's own pages. `AI_SUMMARY` returns the method, model and readiness without any credentials.
 
-The background answers `AI_STATUS`, `AI_COMMAND` and `AI_GENERATE` itself (`src/platform/ai-connection.ts`): it keeps the method chosen in this browser, runs the API key method (`api-key-connection.ts`) and talks to the helper app through `helper-client.ts`. Native messaging uses its own, narrower protocol (`packages/contracts/src/host-protocol.ts`) whose wire format stays readable by every supported helper app. Both protocols share the envelope and `PROTOCOL_VERSION` (`protocol.ts`); see [version compatibility](./RELEASING.md#version-compatibility).
+The background answers `AI_STATUS`, `AI_COMMAND` and `AI_GENERATE` itself (`src/platform/ai-connection.ts`): it keeps the method chosen in this browser, runs the API key method (`createApiKeyConnection` from `@writehand/ai-connection`) and talks to the helper app through `helper-client.ts`. Native messaging uses its own, narrower protocol (`packages/contracts/src/host-protocol.ts`) whose wire format stays readable by every supported helper app. Both protocols share the envelope and `PROTOCOL_VERSION` (`protocol.ts`); see [version compatibility](./RELEASING.md#version-compatibility).
 
 ### API keys
 
@@ -160,7 +168,7 @@ The API key method runs entirely in the extension's background; no helper app is
 - **Default model.** Only a model that is free to use is selected by itself: `openai/gpt-oss-120b` on Groq, its `:free` variant on OpenRouter. OpenAI models are always paid, so the user chooses one.
 - **Permissions.** Each provider's API origin is an `optional_host_permissions` entry. The settings page asks for it inside the **Connect key** click (`requestProviderAccess`) before the key is sent; without it the background refuses the key (`AI_PROVIDER_ACCESS_REQUIRED`). A permission removed in the browser's settings is reported, and **Allow access** asks again.
 - **Checking a key.** A key is saved only after the provider accepted it by listing models (OpenRouter's model list is public, so `GET /key` checks the key first). The key must be printable ASCII without spaces, since it becomes a header value, and the page does not send a key that has another provider's format (`apiProviderOfKey`).
-- **Storage.** `src/platform/secret-vault.ts`: AES-GCM with a random IV and the provider's name as additional authenticated data, so an entry cannot be moved to another provider. The 256-bit key is generated non-extractable and kept as a `CryptoKey` in the IndexedDB of the extension's origin (`indexed-db-key-store.ts`), which web pages and content scripts cannot open; `storage.local`, which content scripts can read, holds only ciphertext. Secrets whose key was lost (site data cleared) are removed and the user connects again. The method choice, provider and model per provider are a separate record (`ai-connection-store.ts`); none of this is synchronized.
+- **Storage.** `packages/ai-connection/src/secret-vault.ts`: AES-GCM with a random IV and the provider's name as additional authenticated data, so an entry cannot be moved to another provider. The 256-bit key is generated non-extractable and kept as a `CryptoKey` in the IndexedDB of the extension's origin (`indexed-db-key-store.ts`), which web pages and content scripts cannot open; `storage.local`, which content scripts can read, holds only ciphertext. Secrets whose key was lost (site data cleared) are removed and the user connects again. The method choice, provider and model per provider are a separate record (`ai-connection-store.ts`); none of this is synchronized.
 - **Exposure.** Only the background decrypts a key, just before sending it to its own provider. Status and summary say which providers have a key, never the key; a saved key is never shown again. This protects the key from web pages, Outlook and the content script, not from someone who can use the browser profile or read its files: unlike the helper app's credentials file, the browser has no operating-system secret store. The guide recommends keys with a spending limit.
 - **Limits.** At most four generations at once and 120 seconds each, like the helper app; a cancellation that arrives before the request was sent stops it.
 
@@ -207,7 +215,7 @@ The same session is shown on two surfaces (`PanelSurface`): the side panel and t
 
 ### Context and opened-message history
 
-- `apps/browser-extension/src/controllers/message-history.ts` keeps every message the user opens in memory for the lifetime of the page. When the reading pane shows only the selected message, this is the only way to reach the earlier messages of a conversation. The history is never persisted, is cleared when the account changes and holds at most 40 messages.
+- `packages/session/src/controllers/message-history.ts` keeps every message the user opens in memory for the lifetime of the page. When the reading pane shows only the selected message, this is the only way to reach the earlier messages of a conversation. The history is never persisted, is cleared when the account changes and holds at most 40 messages.
 - `packages/core/src/context/message-history.ts` (pure functions): messages from the same conversation or with the same subject (ignoring `RE:`, `FW:`, `YNT:`, `İLT:` prefixes) are **related** and included by default. Messages from other conversations are listed under **Other opened emails** and are not selected.
 - The selection is stored as exceptions (`ContextSelection { included, excluded }`), so related messages opened later join the context automatically while those the user removed stay removed.
 - Message text in the context can be edited in the panel (`ContextEdit`); the original email is not changed and **Restore original** removes the edit.
@@ -225,7 +233,7 @@ Automated tests verify context selection, routing and the prompt passed to provi
 ### Appearance
 
 - The UI follows the Fluent UI v9 design language (`packages/ui/src/styles/`).
-- With the **Automatic** theme (`system`), the extension reads the mail page's current colours (`MailPageProvider.readTheme`, `mounting/appearance.ts`): Outlook's Fluent variables, including the accent colour, or Gmail's background and text colour, which tell light from dark. If they cannot be read (for example a Gmail theme with a background picture), the system preference is used.
+- With the **Automatic** theme (`system`), the extension reads the mail page's current colours (`MailPageProvider.readTheme`, `resolveAppearance` in `packages/session/src/appearance.ts`): Outlook's Fluent variables, including the accent colour, or Gmail's background and text colour, which tell light from dark. If they cannot be read (for example a Gmail theme with a background picture), the system preference is used.
 - WXT applies `all: initial !important` to the shadow root's host element, so floating buttons are positioned on a container inside the shadow root, not on the host.
 - Stacking order: toolbar and card `999990`, panel `999991`; Outlook's dialogs and menus use `1000000`. The extension stays above page content and below Outlook's confirmation dialogs.
 
@@ -240,14 +248,14 @@ Automated tests verify context selection, routing and the prompt passed to provi
 
 **A new AI provider:** providers live in their own packages (`packages/ai-openai`, `packages/ai-claude-code`, `packages/ai-chat-completions`) that depend only on `contracts` and use the shared prompt. The content script talks to them only through the `TextProcessor` interface (`contracts/src/text-processor.ts`) returned by `loadTextProcessor()`; `ui` (apart from texts), `core` and the mail connectors do not change.
 
-- An API key provider with an OpenAI-compatible API: add it to `API_PROVIDERS` and `API_PROVIDER_DETAILS` (`contracts/src/api-providers.ts`), give it a model list parser and a free default in `ai-chat-completions` (like `groq.ts`), register it in `apps/browser-extension/src/platform/api-key-providers.ts`, add its origin to `OPTIONAL_HOST_PERMISSIONS` in `scripts/verify-packages.mjs` and its hint to the `providerHints` texts. A provider with another API gets its own package that returns the same `ApiKeyProvider` shape (`listModels`, `defaultModel`, `generate`, all as `Result`).
+- An API key provider with an OpenAI-compatible API: add it to `API_PROVIDERS` and `API_PROVIDER_DETAILS` (`contracts/src/api-providers.ts`), give it a model list parser and a free default in `ai-chat-completions` (like `groq.ts`), register it in `packages/ai-connection/src/api-key-providers.ts`, add its origin to `OPTIONAL_HOST_PERMISSIONS` in `scripts/verify-packages.mjs` and its hint to the `providerHints` texts. A provider with another API gets its own package that returns the same `ApiKeyProvider` shape (`listModels`, `defaultModel`, `generate`, all as `Result`).
 - A method that needs a local program goes into the helper app (`apps/ai-companion/src/ai-service.ts`) and `HELPER_AI_MODES`.
 - If the data flow changes, update the Firefox data collection declaration (`wxt.config.ts` → `data_collection_permissions`) and `PRIVACY.md` in the same change.
 
 **A new interface language:**
 
 1. Add the code to `UI_LANGUAGES` and its native name to `UI_LANGUAGE_NAMES` in `contracts/src/languages.ts`.
-2. Translate `<code>.ts`, `ai-<code>.ts`, `helper-<code>.ts` and `welcome-<code>.ts` in `apps/browser-extension/src/locales/` from the English files and add them to the table in `index.ts`. The manifest name and description (`description`, at most 132 characters) are written to `_locales/<code>/messages.json` at build time. The `ExtensionText` and `AiText` types catch missing keys.
+2. Translate `<code>.ts`, `ai-<code>.ts`, `helper-<code>.ts` and `welcome-<code>.ts` in `packages/locales/src/` from the English files and add them to the table in `index.ts`. The manifest name and description (`description`, at most 132 characters) are written to `_locales/<code>/messages.json` at build time. The `ExtensionText` and `AiText` types catch missing keys.
 3. Use `countWith('<code>')` for counted text; plural rules come from `Intl.PluralRules`, and language names (for example in the Translate menu) from `Intl.DisplayNames`. Do not add language-specific conditions.
 4. Do not translate brand and button names: the product name (`PRODUCT_NAME`, inserted as a variable), "Claude Code", "Continue with ChatGPT" (required by OpenAI) and ChatGPT's own menu names (Security and login → Sign in with ChatGPT).
 5. `tests/integration/extension/locales.test.ts` catches empty strings, sentences left in English and developer instructions (`pnpm`, `docs/`, extension IDs) in user-facing text. Check the toolbar and card visually in a narrow window for long labels.
@@ -351,7 +359,8 @@ Rules for live inspection:
 | Gmail connector | `tests/integration/gmail-web/` with `tests/fixtures/gmail/` | Vitest and jsdom |
 | Shared connector parts | `tests/integration/mail-dom/` | Vitest and jsdom |
 | Vue components | `tests/integration/ui/` | Vue Test Utils |
-| Controllers and platform | `tests/integration/extension/` | Vitest with a fake connector |
+| Panel session (controllers, settings store, appearance) | `tests/integration/session/` | Vitest with a fake connector |
+| Extension platform (messaging, AI connection, locales) | `tests/integration/extension/` | Vitest |
 | Chromium extension | `tests/e2e/extension-chromium/` | Playwright with the test build |
 | Firefox extension | `tests/e2e/extension-firefox/run-smoke.mjs` | WebDriver BiDi, headless |
 | Live Outlook and Gmail (manual) | `tests/manual/live/` | WebDriver BiDi and a persistent Firefox profile |

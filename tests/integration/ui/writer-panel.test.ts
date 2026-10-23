@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils';
+import { tr } from '@writehand/locales';
 import {
   ComposeToolbar,
   ContextInspector,
@@ -14,8 +15,6 @@ import {
 } from '@writehand/ui';
 import { describe, expect, it } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
-
-import { tr } from '../../../apps/browser-extension/src/locales/tr';
 
 const emptyContext: ContextView = {
   status: 'not-loaded',

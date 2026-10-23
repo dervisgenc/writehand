@@ -1,12 +1,10 @@
 import type { TargetLanguage } from '@writehand/contracts';
+import type { Appearance, PanelSessionDependencies, PanelSurface } from '@writehand/session';
 import type { QuickActionRequest, UiText } from '@writehand/ui';
 import { createApp, shallowRef, type Ref, type ShallowRef } from 'vue';
 import { createShadowRootUi, type ContentScriptContext, type ShadowRootContentScriptUi } from '#imports';
 
 import { OWN_UI_ATTRIBUTE, type LauncherAnchor } from '../bootstrap/mail-provider';
-import type { PanelSessionDependencies } from '../composables/use-panel-session';
-import type { PanelSurface } from '../controllers/panel-controller';
-import type { Appearance } from './appearance';
 import LauncherHost from './LauncherHost.vue';
 import { ISOLATED_EVENTS } from './mount-panel';
 

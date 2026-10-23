@@ -1,15 +1,22 @@
 import { createSession } from '@writehand/core';
 import { ok, type TextProcessor } from '@writehand/contracts';
+import { textFor } from '@writehand/locales';
+import {
+  createActionController,
+  createApplyController,
+  createMessageHistory,
+  createPanelController,
+  createRandomIds,
+  createSessionStore,
+  createSettingsStore,
+  parseStoredSettings,
+  resolveAppearance,
+  SETTINGS_STORAGE_KEY,
+  systemClock,
+} from '@writehand/session';
 import { computed, shallowRef, watch } from 'vue';
 import type { ContentScriptContext } from '#imports';
 
-import { createActionController } from '../controllers/action-controller';
-import { createApplyController } from '../controllers/apply-controller';
-import { createMessageHistory } from '../controllers/message-history';
-import { createPanelController } from '../controllers/panel-controller';
-import { createSessionStore } from '../controllers/session-store';
-import { textFor } from '../locales';
-import { resolveAppearance } from '../mounting/appearance';
 import { createLauncherMounter } from '../mounting/mount-launchers';
 import { mountPanel } from '../mounting/mount-panel';
 import { removeOrphanedUi } from '../mounting/orphaned-ui';
@@ -23,8 +30,6 @@ import {
 } from '../platform/extension-browser';
 import { createRuntimeHandler, toMessageListener } from '../platform/runtime-messaging';
 import { createLauncherPositionStore, type LauncherOffset } from '../platform/launcher-position-store';
-import { createSettingsStore, parseStoredSettings, SETTINGS_STORAGE_KEY } from '../platform/settings-store';
-import { createRandomIds, systemClock } from '../platform/system-dependencies';
 import type { MailPageProvider } from './mail-provider';
 
 export interface ExtensionSessionOptions {

@@ -187,6 +187,9 @@ importers:
       '@writehand/ai-claude-code':
         specifier: workspace:*
         version: link:packages/ai-claude-code
+      '@writehand/ai-connection':
+        specifier: workspace:*
+        version: link:packages/ai-connection
       '@writehand/ai-openai':
         specifier: workspace:*
         version: link:packages/ai-openai
@@ -202,12 +205,18 @@ importers:
       '@writehand/gmail-web':
         specifier: workspace:*
         version: link:packages/mail-connectors/gmail-web
+      '@writehand/locales':
+        specifier: workspace:*
+        version: link:packages/locales
       '@writehand/mail-dom':
         specifier: workspace:*
         version: link:packages/mail-connectors/mail-dom
       '@writehand/outlook-web':
         specifier: workspace:*
         version: link:packages/mail-connectors/outlook-web
+      '@writehand/session':
+        specifier: workspace:*
+        version: link:packages/session
       '@writehand/ui':
         specifier: workspace:*
         version: link:packages/ui
@@ -284,27 +293,27 @@ importers:
 
   apps/browser-extension:
     dependencies:
-      '@writehand/ai-chat-completions':
+      '@writehand/ai-connection':
         specifier: workspace:*
-        version: link:../../packages/ai-chat-completions
-      '@writehand/ai-openai':
-        specifier: workspace:*
-        version: link:../../packages/ai-openai
+        version: link:../../packages/ai-connection
       '@writehand/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
       '@writehand/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@writehand/email-format':
-        specifier: workspace:*
-        version: link:../../packages/email-format
       '@writehand/gmail-web':
         specifier: workspace:*
         version: link:../../packages/mail-connectors/gmail-web
+      '@writehand/locales':
+        specifier: workspace:*
+        version: link:../../packages/locales
       '@writehand/outlook-web':
         specifier: workspace:*
         version: link:../../packages/mail-connectors/outlook-web
+      '@writehand/session':
+        specifier: workspace:*
+        version: link:../../packages/session
       '@writehand/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -343,6 +352,21 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
 
+  packages/ai-connection:
+    dependencies:
+      '@writehand/ai-chat-completions':
+        specifier: workspace:*
+        version: link:../ai-chat-completions
+      '@writehand/ai-openai':
+        specifier: workspace:*
+        version: link:../ai-openai
+      '@writehand/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+
   packages/ai-openai:
     dependencies:
       '@writehand/contracts':
@@ -373,6 +397,15 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
 
+  packages/locales:
+    dependencies:
+      '@writehand/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@writehand/ui':
+        specifier: workspace:*
+        version: link:../ui
+
   packages/mail-connectors/gmail-web:
     dependencies:
       '@writehand/contracts':
@@ -396,6 +429,24 @@ importers:
       '@writehand/mail-dom':
         specifier: workspace:*
         version: link:../mail-dom
+
+  packages/session:
+    dependencies:
+      '@writehand/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@writehand/core':
+        specifier: workspace:*
+        version: link:../core
+      '@writehand/email-format':
+        specifier: workspace:*
+        version: link:../email-format
+      '@writehand/ui':
+        specifier: workspace:*
+        version: link:../ui
+      vue:
+        specifier: ^3.5.0
+        version: 3.5.43(typescript@6.0.3)
 
   packages/ui:
     dependencies:
