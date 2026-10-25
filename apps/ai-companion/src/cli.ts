@@ -41,6 +41,7 @@ async function main(): Promise<void> {
           ? { program: process.execPath }
           : { script: process.argv[1] ?? '', node: process.execPath },
         addin,
+        outlook: command.outlook,
       });
       return;
     case 'uninstall':

@@ -54,6 +54,8 @@ export interface OutlookPlatform {
   trustAuthority(certificatePath: string): Command;
   /** Removes it again by its SHA-1 thumbprint; Windows asks again. */
   untrustAuthority(thumbprint: string): Command;
+  /** Puts text on the clipboard: the manifest's path, for Outlook's file dialog. */
+  copyToClipboard(text: string): Command;
 }
 
 /** A program started without a shell. */
@@ -365,6 +367,12 @@ function windowsPlatform(arch: string, env: Environment, home: string): HostPlat
       untrustAuthority: (thumbprint) => ({
         file: system32('certutil.exe'),
         args: ['-user', '-delstore', 'Root', thumbprint],
+      }),
+      // clip.exe reads its input in the console code page; Set-Clipboard keeps any user name intact.
+      copyToClipboard: (text) => ({
+        file: system32('WindowsPowerShell\\v1.0\\powershell.exe'),
+        args: ['-NoProfile', '-NonInteractive', '-Command', 'Set-Clipboard -Value $env:WRITEHAND_CLIPBOARD'],
+        env: windowsPowerShellEnvironment(env, { WRITEHAND_CLIPBOARD: text }),
       }),
     },
     deferredRemoval: (directory, pid) => {

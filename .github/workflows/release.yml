@@ -76,7 +76,7 @@ jobs:
         with:
           path: release
           merge-multiple: true
-      - run: cp apps/ai-companion/install/install.sh apps/ai-companion/install/install.ps1 release/
+      - run: cp apps/ai-companion/install/install.sh apps/ai-companion/install/install.ps1 apps/ai-companion/install/install-outlook.ps1 release/
       - name: Checksums and signature
         env:
           WRITEHAND_RELEASE_SIGNING_KEY: ${{ secrets.WRITEHAND_RELEASE_SIGNING_KEY }}

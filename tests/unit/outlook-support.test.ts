@@ -15,6 +15,8 @@ import {
   commandLine,
   disableOutlook,
   enableOutlook,
+  installOutlook,
+  OUTLOOK_SIDELOAD_URL,
   outlookStatus,
   refreshOutlook,
   serveCommand,
@@ -80,6 +82,7 @@ async function setup(changes: Partial<HostConfig> = {}) {
       autostart: { key: WINDOWS_RUN_KEY, name: OUTLOOK_AUTOSTART_VALUE },
       trustAuthority: (path) => ({ file: 'certutil', args: ['-addstore', path] }),
       untrustAuthority: (thumbprint) => ({ file: 'certutil', args: ['-delstore', thumbprint] }),
+      copyToClipboard: (text) => ({ file: 'clipboard', args: [text] }),
     },
   };
   await mkdir(base.installDirectory, { recursive: true });
@@ -182,8 +185,20 @@ describe('writehand outlook', () => {
       file: outlook.windowlessProgramPath,
       args: ['outlook', 'serve'],
     });
+    // The last step comes to the user: the add-in dialog opens with the manifest's path on the clipboard.
+    expect(io.run.mock.calls[1]![0]).toEqual({ file: 'clipboard', args: [outlook.manifestPath] });
+    expect(io.start).toHaveBeenCalledWith(context.platform.urlOpener(OUTLOOK_SIDELOAD_URL));
     expect(printed(io)).toContain('https://aka.ms/olksideload');
     expect(printed(io)).toContain(outlook.manifestPath);
+    expect(printed(io)).toContain('its path is on the clipboard');
+  });
+
+  it('enable: without the clipboard, the path is still printed for the file dialog', async () => {
+    const { context, io, outlook } = await setup();
+    io.run.mockImplementation(async (command) => (command.file === 'clipboard' ? 1 : 0));
+    await enableOutlook(context, io);
+    expect(printed(io)).toContain(outlook.manifestPath);
+    expect(printed(io)).not.toContain('clipboard');
   });
 
   it('enable: when the user declines the prompt, nothing else changes', async () => {
@@ -205,6 +220,22 @@ describe('writehand outlook', () => {
     const commands = io.run.mock.calls.map(([command]) => command.args.join(' '));
     expect(commands[0]).toMatch(/^-addstore /);
     expect(commands[1]).toBe(`-delstore ${'A'.repeat(40)}`);
+    // Renewing leaves the add-in in Outlook as it is: no dialog and no clipboard.
+    expect(commands).toHaveLength(2);
+    expect(io.start).not.toHaveBeenCalledWith(context.platform.urlOpener(OUTLOOK_SIDELOAD_URL));
+  });
+
+  it('install --outlook: enables the server the first time, and later asks Windows nothing', async () => {
+    const { context, io, saved } = await setup();
+    await installOutlook(context, io);
+    expect(io.run.mock.calls[0]![0].args[0]).toBe('-addstore');
+    expect((await saved()).outlook).not.toBe(null);
+
+    io.run.mockClear();
+    io.print.mockClear();
+    await installOutlook({ ...context, config: await saved() }, io);
+    expect(io.run).not.toHaveBeenCalled();
+    expect(printed(io)).toContain('is on already');
   });
 
   it('enable needs the add-in inside the program and an installed helper app', async () => {

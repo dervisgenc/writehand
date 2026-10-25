@@ -57,18 +57,30 @@ export interface OutlookIo {
 export const systemIo: OutlookIo = {
   run: (command) =>
     new Promise((resolve) => {
-      const child = spawn(command.file, [...command.args], { stdio: 'ignore', windowsHide: true });
+      const child = spawn(command.file, [...command.args], {
+        env: command.env ?? process.env,
+        stdio: 'ignore',
+        windowsHide: true,
+      });
       child.once('error', () => resolve(-1));
       child.once('exit', (code) => resolve(code ?? -1));
     }),
   start: (command) => {
     // Detached: not ended with this process, and on Windows outside Node's own job object.
-    spawn(command.file, [...command.args], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+    spawn(command.file, [...command.args], {
+      env: command.env ?? process.env,
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+    }).unref();
   },
   print: (text) => process.stdout.write(`${text}\n`),
   now: () => new Date(),
   patience: 20,
 };
+
+/** Outlook on the web's add-in dialog, where a user adds the manifest to their mailbox. */
+export const OUTLOOK_SIDELOAD_URL = 'https://aka.ms/olksideload';
 
 const FILES = {
   authority: 'authority.crt',
@@ -305,16 +317,41 @@ export async function enableOutlook(context: OutlookContext, io: OutlookIo): Pro
   await writeFile(outlook.manifestPath, manifest.body);
   const running = await startServer(current, io);
   io.print(
+    running
+      ? `The ${PRODUCT_NAME} Outlook add-in runs on ${OUTLOOK_ADDIN_ORIGIN} and starts when you sign in to Windows.`
+      : `The server did not answer yet. Run "writehand outlook status" in a moment; it also starts when you sign in to Windows.`,
+  );
+  // The first time, the last step comes to the user: the add-in dialog opens with the path ready.
+  // Renewing the certificate leaves the add-in in Outlook as it is.
+  const first = previous === null;
+  const copied = first && (await io.run(outlook.copyToClipboard(outlook.manifestPath))) === 0;
+  if (first) io.start(platform.urlOpener(OUTLOOK_SIDELOAD_URL));
+  io.print(
     [
-      running
-        ? `The ${PRODUCT_NAME} Outlook add-in runs on ${OUTLOOK_ADDIN_ORIGIN} and starts when you sign in to Windows.`
-        : `The server did not answer yet. Run "writehand outlook status" in a moment; it also starts when you sign in to Windows.`,
       '',
-      'Add it to Outlook once: open https://aka.ms/olksideload, choose My add-ins → Custom Addins →',
-      'Add a custom add-in → Add from File, and select this file:',
+      first
+        ? `Last step, once: add the add-in to your mailbox. Your browser opens ${OUTLOOK_SIDELOAD_URL} (sign in if asked).`
+        : `If ${PRODUCT_NAME} is not in Outlook yet, add it once at ${OUTLOOK_SIDELOAD_URL}.`,
+      'Choose My add-ins → Custom Addins → Add a custom add-in → Add from File and select this file' +
+        (copied ? ' (its path is on the clipboard: paste it into the file name box):' : ':'),
       `  ${outlook.manifestPath}`,
-      `The certificate is valid until ${certificates.notAfter.toISOString().slice(0, 10)}; run this command again before then.`,
+      `Then restart Outlook; ${PRODUCT_NAME} is under Apps on an email and on a draft.`,
+      `The certificate is valid until ${certificates.notAfter.toISOString().slice(0, 10)}; run writehand outlook enable again before then.`,
     ].join('\n'),
+  );
+}
+
+/**
+ * `install --outlook`: turns the server on as `outlook enable` does. When it is on already,
+ * `install` has just restarted it with the new program, so Windows is not asked again.
+ */
+export async function installOutlook(context: OutlookContext, io: OutlookIo): Promise<void> {
+  if (context.config.outlook === null) {
+    await enableOutlook(context, io);
+    return;
+  }
+  io.print(
+    `The ${PRODUCT_NAME} Outlook add-in server is on already (writehand outlook status). Its manifest: ${outlookOf(context.platform).manifestPath}`,
   );
 }
 
@@ -337,7 +374,7 @@ export async function disableOutlook(context: OutlookContext, io: OutlookIo): Pr
   await rm(outlook.manifestPath, { force: true });
   if (context.config.outlook !== null) await saveConfig(context, { ...context.config, outlook: null });
   io.print(
-    `The Outlook add-in server is off. Remove ${PRODUCT_NAME} from Outlook as well: https://aka.ms/olksideload → My add-ins.`,
+    `The Outlook add-in server is off. Remove ${PRODUCT_NAME} from Outlook as well: ${OUTLOOK_SIDELOAD_URL} → My add-ins.`,
   );
 }
 

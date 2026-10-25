@@ -17,7 +17,13 @@ export type CliCommand =
   | { readonly kind: 'host' }
   | { readonly kind: 'help' }
   | { readonly kind: 'version' }
-  | { readonly kind: 'install'; readonly extensionIds: readonly string[]; readonly development: boolean }
+  | {
+      readonly kind: 'install';
+      readonly extensionIds: readonly string[];
+      readonly development: boolean;
+      /** Also turns on the Outlook add-in server (`outlook enable`) unless it is on already. */
+      readonly outlook: boolean;
+    }
   | { readonly kind: 'uninstall'; readonly deleteData: boolean }
   | { readonly kind: 'status' }
   | { readonly kind: 'update'; readonly checkOnly: boolean }
@@ -29,10 +35,11 @@ export type OutlookAction = (typeof OUTLOOK_ACTIONS)[number];
 export const USAGE = `Usage: ${HELPER_COMMAND} <command>
 
 Commands:
-  install [--extension-id=ID]... [--dev]
+  install [--extension-id=ID]... [--dev] [--outlook]
       Install the helper app for this user and register it with Firefox, Chrome, Edge
       and Brave. --extension-id allows another extension, e.g. an unpacked development
-      build. --dev installs the Node.js build of a source checkout.
+      build. --dev installs the Node.js build of a source checkout. --outlook (Windows)
+      also turns on the Outlook add-in server, as outlook enable does.
   uninstall [--delete-data]
       Remove the browser registrations and the program. --delete-data also signs out
       of ChatGPT and deletes credentials and API keys from this computer.
@@ -85,11 +92,12 @@ export function parseCommand(argv: readonly string[], interactive: boolean): Cli
   };
   switch (name) {
     case 'install':
-      accept(['--dev'], true);
+      accept(['--dev', '--outlook'], true);
       return {
         kind: 'install',
         extensionIds: args.filter(isExtensionId).map((arg) => arg.slice('--extension-id='.length)),
         development: args.includes('--dev'),
+        outlook: args.includes('--outlook'),
       };
     case 'uninstall':
       accept(['--delete-data']);

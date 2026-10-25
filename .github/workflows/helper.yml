@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           mkdir release
-          cp apps/ai-companion/dist/release/* apps/ai-companion/install/install.sh apps/ai-companion/install/install.ps1 release/
+          cp apps/ai-companion/dist/release/* apps/ai-companion/install/install.sh apps/ai-companion/install/install.ps1 apps/ai-companion/install/install-outlook.ps1 release/
           ls release/writehand-${{ matrix.target }}.*
           node scripts/sign-release.mjs release --unsigned
 

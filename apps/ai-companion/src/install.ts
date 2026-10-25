@@ -10,7 +10,7 @@ import { createCredentialStore } from './credential-store';
 import { DEFAULT_HOST_CONFIG, hostEnvironment, parseHostConfig, type HostConfig } from './host-config';
 import { allowedExtensions, commandPath, planInstall, planUninstall } from './install-plan';
 import { hostPlatform, type HostPlatform } from './platform';
-import { disableOutlook, refreshOutlook, systemIo } from './outlook';
+import { disableOutlook, installOutlook, refreshOutlook, systemIo } from './outlook';
 import type { AddinFile } from './outlook-server';
 import { readRegistration, registeredBrowsers } from './registrations';
 import { HOST_VERSION } from './version';
@@ -85,8 +85,12 @@ export async function install(
     readonly source: { readonly program: string } | { readonly script: string; readonly node: string };
     /** The Outlook add-in's files this program carries. */
     readonly addin: ReadonlyMap<string, AddinFile>;
+    /** Also turns on the Outlook add-in server (`install --outlook`). */
+    readonly outlook: boolean;
   },
 ): Promise<void> {
+  if (options.outlook && platform.outlook === null)
+    throw new Error('The Outlook add-in server is available on Windows only so far.');
   const node = 'node' in options.source ? options.source.node : null;
   if (options.development !== (node !== null))
     throw new Error(
@@ -154,6 +158,15 @@ export async function install(
       'Reload the extension or restart the browser, then open its settings.',
     ].join('\n'),
   );
+  if (options.outlook) {
+    print('');
+    await installOutlook({ platform, config, files: options.addin }, systemIo).catch((error: unknown) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `The helper app is installed, but the Outlook add-in server is not on. ${reason} Run the same command again to retry.`,
+      );
+    });
+  }
 }
 
 /** Signs out of every ChatGPT account (revoking its session where possible) and deletes the credentials. */
