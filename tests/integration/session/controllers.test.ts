@@ -290,6 +290,45 @@ describe('Panel flow (with a fake connector)', () => {
     expect(view().preview).not.toBeNull();
   });
 
+  it('the Outlook add-in menu\'s "Revise" opens the panel on the selection and revises it at once', async () => {
+    current = setup();
+    const { panel, connector, view } = current;
+    panel.open({
+      origin: 'composer-launcher',
+      composer: connector.composer,
+      action: { operation: 'revise' },
+    });
+    await tick(10);
+
+    expect(panel.surface()).toEqual({ kind: 'panel' });
+    expect(view().source).toMatchObject({ origin: 'draft-selection', text: 'toplantı' });
+    expect(view().preview).toMatchObject({ text: 'Toplantıyı yarın yapabiliriz.' });
+  });
+
+  it('the menu\'s "Translate" waits in the panel for a language, and "Write" in a reply draft for an instruction', async () => {
+    current = setup();
+    const { panel, store, connector, view } = current;
+    panel.open({
+      origin: 'composer-launcher',
+      composer: connector.composer,
+      action: { operation: 'translate', language: null },
+    });
+    await tick(10);
+    expect(panel.surface()).toEqual({ kind: 'panel' });
+    expect(view().operation).toBe('translate');
+    expect(view().source.text).toBe('toplantı');
+    expect(store.getState().action).toBeNull();
+
+    panel.open({
+      origin: 'composer-launcher',
+      composer: connector.composer,
+      action: { operation: 'compose' },
+    });
+    await tick(10);
+    expect(view().operation).toBe('reply');
+    expect(store.getState().action).toBeNull();
+  });
+
   it("has no target language in a reply's action record; the reply follows the conversation's language", async () => {
     current = setup();
     const { panel, store, connector, actions } = current;

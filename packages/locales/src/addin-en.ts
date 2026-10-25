@@ -9,6 +9,12 @@ export const addinEn: AddinOwnText = {
     groupLabel: PRODUCT_NAME,
     buttonLabel: PRODUCT_NAME,
     buttonTooltip: `Open ${PRODUCT_NAME} to revise, translate or write this email. Nothing is written or sent without your approval.`,
+    commands: {
+      reviseTooltip: `Revise the selected text or the draft in the ${PRODUCT_NAME} pane. You see a preview before anything is written.`,
+      translateTooltip: `Translate the selected text or the draft in the ${PRODUCT_NAME} pane into the language you choose.`,
+      writeTooltip: `Describe what you want to say in the ${PRODUCT_NAME} pane; it writes the email or the reply as a preview.`,
+      open: `Open ${PRODUCT_NAME}`,
+    },
   },
   pane: {
     settings: 'Settings',

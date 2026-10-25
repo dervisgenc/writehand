@@ -9,6 +9,12 @@ export const addinTr: AddinOwnText = {
     groupLabel: PRODUCT_NAME,
     buttonLabel: PRODUCT_NAME,
     buttonTooltip: `Bu e-postayı düzeltmek, çevirmek veya yazmak için ${PRODUCT_NAME}’i açın. Onayınız olmadan hiçbir şey yazılmaz veya gönderilmez.`,
+    commands: {
+      reviseTooltip: `Seçili metni ya da taslağı ${PRODUCT_NAME} bölmesinde düzeltin. Bir şey yazılmadan önce önizlemeyi görürsünüz.`,
+      translateTooltip: `Seçili metni ya da taslağı ${PRODUCT_NAME} bölmesinde seçtiğiniz dile çevirin.`,
+      writeTooltip: `Ne söylemek istediğinizi ${PRODUCT_NAME} bölmesinde anlatın; e-postayı ya da yanıtı önizleme olarak yazsın.`,
+      open: `${PRODUCT_NAME}’i aç`,
+    },
   },
   pane: {
     settings: 'Ayarlar',

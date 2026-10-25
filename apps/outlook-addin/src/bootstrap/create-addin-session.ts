@@ -35,6 +35,7 @@ import {
   systemClock,
   type PanelSessionDependencies,
   type PatchSettingsResult,
+  type QuickAction,
 } from '@writehand/session';
 import { shallowRef, type ShallowRef } from 'vue';
 
@@ -53,8 +54,11 @@ export interface AddinSession {
    * only API keys.
    */
   readonly methods: readonly AiMode[];
-  /** Opens the panel's work for the item Outlook shows: its draft, its email, or nothing yet. */
-  openForCurrentItem(): void;
+  /**
+   * Opens the panel's work for the item Outlook shows: its draft, its email, or nothing yet. In a
+   * draft, `command` (from the compose ribbon menu) starts that operation at once.
+   */
+  openForCurrentItem(command: QuickAction | null): void;
   dispose(): void;
 }
 
@@ -162,10 +166,15 @@ export async function createAddinSession(
     },
     ai,
     methods: token === null ? ['api-key'] : AI_MODES,
-    openForCurrentItem() {
+    openForCurrentItem(command) {
       const { activeThread, composers } = connector.getPageState();
       const [composer] = composers;
-      if (composer !== undefined) panel.open({ origin: 'composer-launcher', composer });
+      if (composer !== undefined)
+        panel.open({
+          origin: 'composer-launcher',
+          composer,
+          ...(command === null ? {} : { action: command }),
+        });
       else if (activeThread !== null) panel.open({ origin: 'thread-launcher', thread: activeThread });
       else panel.open({ origin: 'toolbar' });
     },

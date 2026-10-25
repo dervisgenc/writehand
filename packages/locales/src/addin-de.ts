@@ -9,6 +9,12 @@ export const addinDe: AddinOwnText = {
     groupLabel: PRODUCT_NAME,
     buttonLabel: PRODUCT_NAME,
     buttonTooltip: `${PRODUCT_NAME} öffnen, um diese E-Mail zu überarbeiten, zu übersetzen oder zu schreiben. Ohne Ihre Zustimmung wird nichts geschrieben oder gesendet.`,
+    commands: {
+      reviseTooltip: `Den markierten Text oder den Entwurf im ${PRODUCT_NAME}-Bereich überarbeiten. Sie sehen eine Vorschau, bevor etwas geschrieben wird.`,
+      translateTooltip: `Den markierten Text oder den Entwurf im ${PRODUCT_NAME}-Bereich in die gewählte Sprache übersetzen.`,
+      writeTooltip: `Beschreiben Sie im ${PRODUCT_NAME}-Bereich, was Sie sagen möchten; die E-Mail oder Antwort erscheint als Vorschau.`,
+      open: `${PRODUCT_NAME} öffnen`,
+    },
   },
   pane: {
     settings: 'Einstellungen',

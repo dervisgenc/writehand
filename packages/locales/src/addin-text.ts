@@ -17,6 +17,16 @@ export interface AddinOwnText {
     readonly buttonLabel: string;
     /** Button tooltip, at most 250 characters. */
     readonly buttonTooltip: string;
+    /**
+     * The commands of the compose ribbon menu, besides the toolbar's Revise, Translate and Write
+     * labels: tooltips at most 250 characters, `open` at most 125.
+     */
+    readonly commands: {
+      readonly reviseTooltip: string;
+      readonly translateTooltip: string;
+      readonly writeTooltip: string;
+      readonly open: string;
+    };
   };
   readonly pane: {
     readonly settings: string;

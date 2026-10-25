@@ -17,9 +17,14 @@ import type { SessionStore } from './session-store';
 export type OpenRequest =
   | { readonly origin: 'toolbar' }
   | { readonly origin: 'thread-launcher'; readonly thread: ThreadRef }
-  | { readonly origin: 'composer-launcher'; readonly composer: ComposerRef };
+  | {
+      readonly origin: 'composer-launcher';
+      readonly composer: ComposerRef;
+      /** Starts this operation in the panel, as the quick action does in the card (Outlook add-in menu). */
+      readonly action?: QuickAction;
+    };
 
-/** An operation started directly from the toolbar on the compose area. */
+/** An operation started directly from the toolbar on the compose area, or the add-in's ribbon menu. */
 export type QuickAction =
   | { readonly operation: 'revise' }
   /** Without a language the card asks for one; the selection and draft are captured first. */
@@ -150,6 +155,47 @@ export function createPanelController(deps: PanelControllerDependencies): PanelC
     return state.thread !== null ? !isSameThread(state.thread, current) : !hasUserWork(state);
   };
 
+  /**
+   * Revise and translate take the draft or selection and run right away; for reply and new email
+   * the session waits for an instruction, and for translate without a language, for a language.
+   */
+  const startQuickAction = async (composer: ComposerRef, action: QuickAction, next: PanelSurface) => {
+    // Write belongs to this editor. A stale toolbar label must not suppress reply context.
+    const operation =
+      action.operation === 'compose' && composer.threadKey !== null ? 'reply' : action.operation;
+    followThread(threadOfComposer(composer), operation);
+    const language = action.operation === 'translate' ? action.language : null;
+    store.dispatch({
+      type: 'form-changed',
+      changes: { operation, ...(language === null ? {} : { targetLanguage: language }) },
+    });
+    setSurface(next);
+    // Capture the selection before focus moves to the card and before the first await.
+    const loaded = await actions.loadFromComposer(composer);
+    if (loaded !== 'loaded') {
+      return;
+    }
+    // The quote may arrive during the asynchronous source read, before the session
+    // has a binding to receive composer-rebound. Reconcile the returned snapshot too.
+    const { binding } = store.getState();
+    if (
+      operation === 'compose' &&
+      (binding.kind === 'draft' || binding.kind === 'draft-selection') &&
+      binding.composerRef.threadKey !== null
+    ) {
+      store.dispatch({
+        type: 'mail-event',
+        event: { type: 'composer-rebound', previous: composer, ref: binding.composerRef },
+      });
+    }
+    await readThreadIfNeeded();
+    const awaitsInput =
+      isInstructionOperation(operation) || (action.operation === 'translate' && action.language === null);
+    if (!awaitsInput) {
+      await actions.prepare();
+    }
+  };
+
   const unsubscribe = connector.subscribe((event: MailEvent) => {
     if (event.type === 'account-changed') {
       actions.cancelPending();
@@ -197,6 +243,10 @@ export function createPanelController(deps: PanelControllerDependencies): PanelC
           store.dispatch({ type: 'form-changed', changes: { operation: 'reply' } });
           break;
         case 'composer-launcher':
+          if (request.action !== undefined) {
+            void startQuickAction(request.composer, request.action, { kind: 'panel' });
+            return;
+          }
           followThread(threadOfComposer(request.composer), store.getState().form.operation);
           setSurface({ kind: 'panel' });
           // Capture the selection before focus moves to the panel and before the first await.
@@ -207,42 +257,8 @@ export function createPanelController(deps: PanelControllerDependencies): PanelC
       void readThreadIfNeeded();
     },
 
-    async runQuickAction(composer, action) {
-      // Write belongs to this editor. A stale toolbar label must not suppress reply context.
-      const operation =
-        action.operation === 'compose' && composer.threadKey !== null ? 'reply' : action.operation;
-      followThread(threadOfComposer(composer), operation);
-      const language = action.operation === 'translate' ? action.language : null;
-      store.dispatch({
-        type: 'form-changed',
-        changes: { operation, ...(language === null ? {} : { targetLanguage: language }) },
-      });
-      setSurface({ kind: 'inline', composerKey: composer.composerKey });
-      // Capture the selection before focus moves to the card and before the first await.
-      const loaded = await actions.loadFromComposer(composer);
-      if (loaded !== 'loaded') {
-        return;
-      }
-      // The quote may arrive during the asynchronous source read, before the session
-      // has a binding to receive composer-rebound. Reconcile the returned snapshot too.
-      const { binding } = store.getState();
-      if (
-        operation === 'compose' &&
-        (binding.kind === 'draft' || binding.kind === 'draft-selection') &&
-        binding.composerRef.threadKey !== null
-      ) {
-        store.dispatch({
-          type: 'mail-event',
-          event: { type: 'composer-rebound', previous: composer, ref: binding.composerRef },
-        });
-      }
-      await readThreadIfNeeded();
-      // The card waits for an instruction (reply, new email) or a language (translate without one).
-      const awaitsInput =
-        isInstructionOperation(operation) || (action.operation === 'translate' && action.language === null);
-      if (!awaitsInput) {
-        await actions.prepare();
-      }
+    runQuickAction(composer, action) {
+      return startQuickAction(composer, action, { kind: 'inline', composerKey: composer.composerKey });
     },
 
     expandToPanel() {

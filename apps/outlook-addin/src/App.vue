@@ -12,6 +12,7 @@ import { provideUiText } from '@writehand/ui';
 import { computed, onMounted, onUnmounted, ref, shallowRef, watchEffect } from 'vue';
 
 import { createAddinSession, type AddinSession } from './bootstrap/create-addin-session';
+import { paneCommand } from './pane-commands';
 import type { OfficeHost } from './platform/office-host';
 import FirstRunView from './views/FirstRunView.vue';
 import PanelView from './views/PanelView.vue';
@@ -56,7 +57,8 @@ function showPanel(): void {
   view.value = 'panel';
   if (!panelStarted.value) {
     panelStarted.value = true;
-    session.value?.openForCurrentItem();
+    // The ribbon menu command that opened the pane, also after the first run.
+    session.value?.openForCurrentItem(paneCommand(window.location.search));
   }
   void refreshStatus();
 }

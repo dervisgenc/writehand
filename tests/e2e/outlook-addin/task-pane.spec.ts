@@ -75,8 +75,11 @@ async function stubGroq(page: Page): Promise<Groq> {
   return groq;
 }
 
-/** Opens the pane with the given item open in the fake Outlook; every other request is recorded. */
-async function openPane(page: Page, options: FakeOfficeOptions) {
+/**
+ * Opens the pane with the given item open in the fake Outlook, at `address` (a ribbon menu command
+ * adds its own); every other request is recorded.
+ */
+async function openPane(page: Page, options: FakeOfficeOptions, address = PANE) {
   const hosts = new Set<string>();
   page.on('request', (request) => hosts.add(new URL(request.url()).host));
   const errors: string[] = [];
@@ -91,7 +94,7 @@ async function openPane(page: Page, options: FakeOfficeOptions) {
   await page.route(OFFICE_JS, (route) => route.fulfill({ contentType: 'text/javascript', body: script }));
   const groq = await stubGroq(page);
   await page.setViewportSize({ width: 380, height: 900 });
-  await page.goto(PANE);
+  await page.goto(address);
   return { groq, hosts, errors };
 }
 
@@ -183,6 +186,43 @@ test('compose: revises the selected words of a reply draft and writes them back 
   );
   expect(calls.filter((call) => call === 'body.setSelectedDataAsync')).toHaveLength(1);
   expect(calls).not.toContain('body.setAsync');
+  expect(errors).toEqual([]);
+});
+
+test("compose menu: Revise opens the pane on the draft's selection and revises it without another click", async ({
+  page,
+}) => {
+  const { groq, errors } = await openPane(
+    page,
+    {
+      item: {
+        mode: 'compose',
+        bodyHtml: WEB_REPLY_DRAFT,
+        composeType: 'reply',
+        conversationId: 'conversation-1',
+      },
+    },
+    // Outlook adds its own parameter to the address of the command.
+    `${PANE}?command=revise&_host_Info=Outlook$Win32$16.02$en-US$$$$0`,
+  );
+  await connectKey(page);
+  await page.evaluate(() =>
+    (window as unknown as { __fakeOffice: { select: (phrase: string) => void } }).__fakeOffice.select(
+      'perşembe günü',
+    ),
+  );
+  groq.answers.push('cuma sabahı');
+  // After the first run the panel starts the menu's command; there is no Revise click.
+  await page.getByRole('button', { name: 'Start' }).click();
+
+  await expect(page.getByRole('textbox', { name: 'Result', exact: true })).toHaveValue('cuma sabahı');
+  await expect(page.getByRole('textbox', { name: 'Text' })).toHaveValue('perşembe günü');
+  await expect(page.getByText('Selected text', { exact: true })).toBeVisible();
+  // Nothing is written before the preview is approved.
+  const calls = await page.evaluate(
+    () => (window as unknown as { __fakeOffice: { calls: string[] } }).__fakeOffice.calls,
+  );
+  expect(calls.filter((call) => call.startsWith('body.set'))).toEqual([]);
   expect(errors).toEqual([]);
 });
 

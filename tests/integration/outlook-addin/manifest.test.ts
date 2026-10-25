@@ -14,6 +14,7 @@ import {
   MANIFEST_LOCALES,
   manifestVersion,
 } from '../../../apps/outlook-addin/build/manifest';
+import { PANE_COMMANDS, paneCommand } from '../../../apps/outlook-addin/src/pane-commands';
 import { createLocalStorageArea, keyDatabaseName } from '../../../apps/outlook-addin/src/platform/storage';
 
 const ORIGIN = 'https://addin.example.org';
@@ -51,7 +52,7 @@ describe('Outlook add-in manifest', () => {
     }
   });
 
-  it('opens the task pane from one ribbon button in read and compose mode, pinnable only in v1.1', () => {
+  it('opens the task pane from a button on a received email and a menu on a draft, pinnable only in v1.1', () => {
     const outer = byTag(manifest, 'VersionOverrides');
     expect(outer.map((element) => element.getAttribute('xsi:type'))).toEqual([
       'VersionOverridesV1_0',
@@ -59,17 +60,75 @@ describe('Outlook add-in manifest', () => {
     ]);
     // v1.1 must be the last child of v1.0.
     expect(outer[0]?.lastElementChild).toBe(outer[1]);
-    const surfaces = byTag(outer[1]!, 'ExtensionPoint').map((point) => point.getAttribute('xsi:type'));
-    expect(surfaces).toEqual(['MessageReadCommandSurface', 'MessageComposeCommandSurface']);
-    expect(byTag(outer[1]!, 'SupportsPinning').map((element) => element.textContent)).toEqual([
-      'true',
-      'true',
+    const points = byTag(outer[1]!, 'ExtensionPoint');
+    expect(points.map((point) => point.getAttribute('xsi:type'))).toEqual([
+      'MessageReadCommandSurface',
+      'MessageComposeCommandSurface',
     ]);
+    const controls = points.map((point) => byTag(point, 'Control').map((c) => c.getAttribute('xsi:type')));
+    expect(controls).toEqual([['Button'], ['Menu']]);
+    // The read button and the menu's four commands each open the pane, pinnable.
+    expect(byTag(outer[1]!, 'SupportsPinning').map((element) => element.textContent)).toEqual(
+      Array(5).fill('true'),
+    );
     const v10Only = [...outer[0]!.children].filter((child) => child !== outer[1]);
     expect(v10Only.flatMap((child) => byTag(child, 'SupportsPinning'))).toEqual([]);
     expect(
       byTag(manifest, 'Action').every((action) => action.getAttribute('xsi:type') === 'ShowTaskpane'),
     ).toBe(true);
+  });
+
+  it("lists revise, translate, write and open in the draft's menu; each opens the pane with its command", () => {
+    // v1.1 holds its own commands and resources.
+    const v11 = byTag(manifest, 'VersionOverrides')[1]!;
+    const resource = (tag: string, id: string | null) =>
+      byTag(v11, tag).find((element) => element.getAttribute('id') === id);
+    const compose = byTag(v11, 'ExtensionPoint')[1]!;
+    const items = byTag(compose, 'Item');
+
+    const addresses = items.map((item) =>
+      resource('bt:Url', byTag(item, 'SourceLocation')[0]!.getAttribute('resid'))?.getAttribute(
+        'DefaultValue',
+      ),
+    );
+    expect(addresses).toEqual([
+      `${ORIGIN}/taskpane.html?command=revise`,
+      `${ORIGIN}/taskpane.html?command=translate`,
+      `${ORIGIN}/taskpane.html?command=write`,
+      `${ORIGIN}/taskpane.html`,
+    ]);
+    // The pane reads from its address the operation the menu names.
+    expect(addresses.map((address) => paneCommand(new URL(address!).search))).toEqual([
+      PANE_COMMANDS.revise,
+      PANE_COMMANDS.translate,
+      PANE_COMMANDS.write,
+      null,
+    ]);
+
+    const label = (item: Element, locale?: string) => {
+      const string = resource('bt:String', byTag(item, 'Label')[0]!.getAttribute('resid'))!;
+      if (locale === undefined) return string.getAttribute('DefaultValue');
+      const override = byTag(string, 'bt:Override').find(
+        (element) => element.getAttribute('Locale') === locale,
+      );
+      return override?.getAttribute('Value');
+    };
+    expect(items.map((item) => label(item))).toEqual(['Revise', 'Translate', 'Write', 'Open Writehand']);
+    expect(items.map((item) => label(item, 'tr-TR'))).toEqual(['Düzelt', 'Çevir', 'Yaz', 'Writehand’i aç']);
+    const tooltip = resource('bt:String', byTag(items[0]!, 'Description')[0]!.getAttribute('resid'));
+    expect(tooltip?.getAttribute('DefaultValue')).toBe(
+      addinTextFor('en').addin.manifest.commands.reviseTooltip,
+    );
+
+    // Resource IDs: at most 32 characters. Control and item IDs: unique.
+    const resourceIds = byTag(v11, 'Resources').flatMap((resources) =>
+      [...resources.querySelectorAll('[id]')].map((element) => element.getAttribute('id')!),
+    );
+    expect(Math.max(...resourceIds.map((id) => id.length))).toBeLessThanOrEqual(32);
+    const commandIds = [...byTag(v11, 'Control'), ...byTag(v11, 'Item')].map((element) =>
+      element.getAttribute('id'),
+    );
+    expect(new Set(commandIds).size).toBe(commandIds.length);
   });
 
   it('loads every page and icon over HTTPS from the one origin', () => {
@@ -100,6 +159,26 @@ describe('Outlook add-in manifest', () => {
       (element) => element.getAttribute('id') === 'ButtonTooltip',
     );
     expect(tooltip?.getAttribute('DefaultValue')).toBe(addinTextFor('en').addin.manifest.buttonTooltip);
+  });
+});
+
+describe("The pane's command", () => {
+  it("is read from the pane's address, next to Outlook's own parameters", () => {
+    expect(paneCommand('?command=revise&_host_Info=Outlook$Win32$16.02$en-US$$$$0')).toEqual({
+      operation: 'revise',
+    });
+    expect(paneCommand('?_host_Info=Outlook&command=translate')).toEqual({
+      operation: 'translate',
+      language: null,
+    });
+    expect(paneCommand('?command=write')).toEqual({ operation: 'compose' });
+  });
+
+  it('is nothing for the plain pane or an unknown name', () => {
+    expect(paneCommand('')).toBeNull();
+    expect(paneCommand('?_host_Info=Outlook')).toBeNull();
+    for (const name of ['send', 'toString', '__proto__', 'REVISE'])
+      expect(paneCommand(`?command=${name}`)).toBeNull();
   });
 });
 

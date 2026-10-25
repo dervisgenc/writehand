@@ -83,12 +83,28 @@ describe('UI languages', () => {
 
   it('keeps the Outlook manifest texts within the manifest limits', () => {
     for (const language of UI_LANGUAGES) {
-      const { manifest } = addinTextFor(language).addin;
+      const { addin, ui } = addinTextFor(language);
+      const { manifest } = addin;
+      const { commands } = manifest;
       // DisplayName, ShortStrings: 125 characters; Description, LongStrings: 250 characters.
       expect(manifest.description.length, language).toBeLessThanOrEqual(250);
-      expect(manifest.buttonTooltip.length, language).toBeLessThanOrEqual(250);
-      expect(manifest.groupLabel.length, language).toBeLessThanOrEqual(125);
-      expect(manifest.buttonLabel.length, language).toBeLessThanOrEqual(125);
+      const tooltips = [
+        manifest.buttonTooltip,
+        commands.reviseTooltip,
+        commands.translateTooltip,
+        commands.writeTooltip,
+      ];
+      for (const tooltip of tooltips) expect(tooltip.length, language).toBeLessThanOrEqual(250);
+      // The compose menu's labels are the toolbar's, and "Open Writehand".
+      const labels = [
+        manifest.groupLabel,
+        manifest.buttonLabel,
+        commands.open,
+        ui.compose.revise,
+        ui.compose.translate,
+        ui.compose.write,
+      ];
+      for (const label of labels) expect(label.length, language).toBeLessThanOrEqual(125);
     }
   });
 
