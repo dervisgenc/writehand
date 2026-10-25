@@ -1,7 +1,7 @@
-// Checks the Outlook add-in's production build (apps/outlook-addin/dist): the pages' Content
-// Security Policy, Office.js as the only remote script, no development code or local addresses,
-// and, when a manifest was written (WRITEHAND_ADDIN_ORIGIN), its identity, version, addresses
-// and permissions. Run after `pnpm build`.
+// Checks the Outlook add-in's release build (apps/outlook-addin/dist), which the helper app
+// carries and serves on https://localhost:41537: the pages' Content Security Policy, Office.js as
+// the only remote script, the empty token tag the helper app fills, no development code, and the
+// manifest's identity, version, addresses and permissions. Run after `pnpm build`.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +13,9 @@ const DIST = join(ROOT, 'apps/outlook-addin/dist');
 const OFFICE_JS_URL = 'https://officeapis.public.onecdn.static.microsoft/1/office.js';
 const OFFICE_JS_ORIGIN = 'https://officeapis.public.onecdn.static.microsoft';
 const PROVIDER_ORIGINS = ['https://api.groq.com', 'https://openrouter.ai', 'https://api.openai.com'];
+// Must match OUTLOOK_ADDIN_ORIGIN and OUTLOOK_BRIDGE in packages/contracts.
+const ADDIN_ORIGIN = 'https://localhost:41537';
+const BRIDGE_TAG = '<meta name="writehand-bridge" content="">';
 const EXPECTED_CSP = [
   "default-src 'none'",
   `script-src 'self' ${OFFICE_JS_ORIGIN}`,
@@ -52,6 +55,11 @@ for (const page of ['taskpane.html', 'commands.html']) {
   }
   if (/<script(?![^>]*\bsrc=)[^>]*>/.test(html)) fail(`${page}: inline scripts are not allowed`);
   if (/<link[^>]*href="https?:/.test(html)) fail(`${page}: remote stylesheets or links are not allowed`);
+  const bridgeTags = html.split(BRIDGE_TAG).length - 1;
+  if (bridgeTags !== (page === 'taskpane.html' ? 1 : 0))
+    fail(
+      `${page}: expected ${page === 'taskpane.html' ? 'one' : 'no'} empty helper app token tag, found ${bridgeTags}`,
+    );
 }
 
 const assets = join(DIST, 'assets');
@@ -59,13 +67,15 @@ for (const file of existsSync(assets) ? readdirSync(assets) : []) {
   if (file.endsWith('.map')) fail(`assets/${file}: source maps are not shipped`);
   if (!/\.(js|css)$/.test(file)) continue;
   const code = readFileSync(join(assets, file), 'utf8');
-  for (const marker of ['localhost:', '127.0.0.1', '/@vite/client', 'sourceMappingURL', 'sample-model']) {
+  for (const marker of ['localhost:3000', '127.0.0.1', '/@vite/client', 'sourceMappingURL', 'sample-model']) {
     if (code.includes(marker)) fail(`assets/${file}: contains development marker "${marker}"`);
   }
 }
 
 const manifestPath = join(DIST, 'manifest.xml');
-if (existsSync(manifestPath)) {
+if (!existsSync(manifestPath)) {
+  fail('manifest.xml is missing');
+} else {
   const manifest = readFileSync(manifestPath, 'utf8');
   const brand = readFileSync(join(ROOT, 'packages/contracts/src/brand.ts'), 'utf8');
   const id = /OUTLOOK_ADDIN_ID = '([0-9a-f-]+)'/.exec(brand)?.[1];
@@ -83,19 +93,14 @@ if (existsSync(manifestPath)) {
   const origins = new Set(
     urls.filter((url) => !url.startsWith('https://github.com/')).map((url) => new URL(url).origin),
   );
-  if (origins.size !== 1)
-    fail(`manifest.xml: every page and icon must come from one origin, found ${[...origins]}`);
-  for (const origin of origins) {
-    const url = new URL(origin);
-    if (url.protocol !== 'https:' || url.hostname === 'localhost')
-      fail(`manifest.xml: ${origin} is not a production HTTPS origin`);
-  }
-} else {
-  console.log('No manifest.xml (WRITEHAND_ADDIN_ORIGIN was not set); checked the pages only.');
+  if (origins.size !== 1 || !origins.has(ADDIN_ORIGIN))
+    fail(`manifest.xml: every page and icon must come from ${ADDIN_ORIGIN}, found ${[...origins]}`);
 }
 
 if (failures.length > 0) {
   for (const failure of failures) console.error(`✗ ${failure}`);
   process.exit(1);
 }
-console.log('Add-in check passed: dist (Content Security Policy, Office.js only, no development code).');
+console.log(
+  'Add-in check passed: dist (Content Security Policy, Office.js only, token tag, manifest for the helper app).',
+);

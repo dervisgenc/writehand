@@ -1,8 +1,11 @@
-import { API_PROVIDER_DETAILS, API_PROVIDERS } from '@writehand/contracts';
+import { API_PROVIDER_DETAILS, API_PROVIDERS, OUTLOOK_ADDIN_ORIGIN } from '@writehand/contracts';
 
 /** Where the task pane is served during development (`pnpm addin:dev`, `pnpm addin:serve`). */
 export const DEV_PORT = 3000;
 export const DEV_ORIGIN = `https://localhost:${DEV_PORT}`;
+
+/** Where the helper app serves the task pane (`writehand outlook enable`), the origin of its manifest. */
+export const HELPER_ORIGIN = OUTLOOK_ADDIN_ORIGIN;
 
 /** Office.js from the CDN endpoint Microsoft recommends since October 2026. */
 export const OFFICE_JS_URL = 'https://officeapis.public.onecdn.static.microsoft/1/office.js';
@@ -42,19 +45,4 @@ export function contentSecurityPolicy(options: { readonly dev: boolean }): strin
     ['form-action', ["'none'"]],
   ];
   return directives.map(([name, values]) => `${name} ${values.join(' ')}`).join('; ');
-}
-
-/** The production origin from `WRITEHAND_ADDIN_ORIGIN`: HTTPS, no path, never localhost. */
-export function productionOrigin(value: string | undefined): string | null {
-  if (value === undefined || value.trim() === '') return null;
-  const url = new URL(value.trim());
-  if (
-    url.protocol !== 'https:' ||
-    url.hostname === 'localhost' ||
-    url.pathname !== '/' ||
-    url.search !== ''
-  ) {
-    throw new Error(`WRITEHAND_ADDIN_ORIGIN must be an https origin other than localhost, got ${value}`);
-  }
-  return url.origin;
 }

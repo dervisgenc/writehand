@@ -26,6 +26,8 @@ export interface AddinOwnText {
     readonly noItem: string;
     /** The page was opened outside Outlook, or Office.js did not load. */
     readonly outsideOutlook: string;
+    /** In place of the ChatGPT and Claude plans while the helper app that served the pane does not answer. */
+    readonly helperUnavailable: string;
   };
   readonly firstRun: {
     readonly title: string;

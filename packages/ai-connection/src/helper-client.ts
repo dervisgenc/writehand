@@ -1,7 +1,9 @@
 import {
+  failureResponse,
   HOST_RESPONSE_PAYLOADS,
   hostRequestSchema,
   PROTOCOL_VERSION,
+  readResponse,
   type AiInput,
   type AppError,
   type HelperCommand,
@@ -11,11 +13,13 @@ import {
   type Result,
 } from '@writehand/contracts';
 
-import { readResponse } from './runtime-messaging';
-
 type HostRequestOf<T extends HostRequestType> = Extract<HostRequest, { type: T }>;
 
-/** The helper app's requests, validated on the way out and on the way back. */
+/**
+ * The helper app's requests, validated on the way out and on the way back. `send` is the
+ * transport: native messaging in the extension, the local add-in server's endpoint in the
+ * Outlook add-in. It answers with a response envelope and never throws.
+ */
 export function createHelperClient(send: (request: HostRequest) => Promise<unknown>) {
   const request = async <T extends HostRequestType>(
     type: T,
@@ -46,3 +50,8 @@ export function createHelperClient(send: (request: HostRequest) => Promise<unkno
 }
 
 export type HelperClient = ReturnType<typeof createHelperClient>;
+
+/** A page that cannot reach the helper app: every request answers `AI_HOST_UNAVAILABLE`. */
+export function createUnavailableHelper(): HelperClient {
+  return createHelperClient(async (request) => failureResponse(request.requestId));
+}

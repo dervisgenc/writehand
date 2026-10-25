@@ -186,6 +186,86 @@ test('compose: revises the selected words of a reply draft and writes them back 
   expect(errors).toEqual([]);
 });
 
+test('served by the helper app: the ChatGPT plan drafts a reply through the helper app on the same origin', async ({
+  page,
+}) => {
+  const TOKEN = 'pane-token-from-the-helper-app-0123';
+  const requests: {
+    type: string;
+    token: string | undefined;
+    origin: string | undefined;
+    payload: unknown;
+  }[] = [];
+  const helperStatus = {
+    mode: 'chatgpt',
+    accounts: [
+      { id: 'account-1', label: 'Work', email: null, verified: true, connected: true, planEnabled: true },
+    ],
+    activeAccountId: 'account-1',
+    models: [{ id: 'gpt-test', label: 'gpt-test' }],
+    selectedModel: 'gpt-test',
+    ready: true,
+    signingIn: false,
+    needsPlanAcknowledgement: false,
+    claudeCode: null,
+    error: null,
+  };
+  // The page as the helper app serves it: the token filled in.
+  await page.route(PANE, async (route) => {
+    const response = await route.fetch();
+    const html = (await response.text()).replace(
+      '<meta name="writehand-bridge" content="">',
+      `<meta name="writehand-bridge" content="${TOKEN}">`,
+    );
+    await route.fulfill({ response, body: html });
+  });
+  // The helper app's endpoint on the pane's origin.
+  await page.route('http://127.0.0.1:4517/api/host', async (route) => {
+    const request = route.request();
+    const body = request.postDataJSON() as { requestId: string; type: string; payload: unknown };
+    requests.push({
+      type: body.type,
+      token: request.headers()['x-writehand-bridge'],
+      origin: request.headers()['origin'],
+      payload: body.payload,
+    });
+    const payload =
+      body.type === 'AI_GENERATE'
+        ? { text: 'Thank you, Ayşe. Thursday at 14:00 works for me.' }
+        : body.type === 'AI_CANCEL'
+          ? { cancelled: false }
+          : helperStatus;
+    await route.fulfill({ json: { protocolVersion: 1, requestId: body.requestId, ok: true, payload } });
+  });
+  const { groq, hosts, errors } = await openPane(page, {
+    item: { mode: 'read', bodyHtml: WEB_RECEIVED_MESSAGE, conversationId: 'conversation-1' },
+  });
+
+  // The helper app's ChatGPT plan is ready, so the pane needs no first run; the settings offer
+  // all three methods.
+  await expect(page.getByText('Using ChatGPT plan')).toBeVisible();
+  await page.getByRole('button', { name: 'AI settings' }).click();
+  await expect(page.getByRole('radio', { name: /ChatGPT plan/ })).toBeChecked();
+  await expect(page.getByRole('radio', { name: /Claude plan/ })).toBeVisible();
+  await expect(page.getByRole('radio', { name: /API key/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByLabel('Reply instruction').fill('Thank Ayşe and confirm Thursday');
+  await page.getByRole('button', { name: 'Draft reply', exact: true }).last().click();
+  await expect(page.getByRole('textbox', { name: 'Result', exact: true })).toHaveValue(
+    'Thank you, Ayşe. Thursday at 14:00 works for me.',
+  );
+
+  // Every helper app request carried the token, from the pane's own origin; no provider was called.
+  expect(requests.length).toBeGreaterThan(0);
+  expect(new Set(requests.map((request) => request.token))).toEqual(new Set([TOKEN]));
+  expect(new Set(requests.map((request) => request.origin))).toEqual(new Set(['http://127.0.0.1:4517']));
+  const generation = requests.find((request) => request.type === 'AI_GENERATE');
+  expect(generation?.payload).toMatchObject({ input: { operation: 'reply' } });
+  expect(groq.requests).toEqual([]);
+  expect([...hosts].sort()).toEqual(['127.0.0.1:4517', 'officeapis.public.onecdn.static.microsoft']);
+  expect(errors).toEqual([]);
+});
+
 test('opened outside Outlook, the pane says where it runs and reads nothing', async ({ page }) => {
   await page.route(OFFICE_JS, (route) => route.fulfill({ contentType: 'text/javascript', body: '' }));
   await page.goto(PANE);

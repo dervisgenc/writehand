@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ApiKeyService } from '@writehand/ai-connection';
-import type { Settings, SettingsChanges } from '@writehand/contracts';
+import type { AiService } from '@writehand/ai-connection';
+import type { AiMode, Settings, SettingsChanges } from '@writehand/contracts';
 import type { AddinText } from '@writehand/locales';
 import type { PatchSettingsResult } from '@writehand/session';
 import { AppIcon, SettingsForm } from '@writehand/ui';
@@ -8,9 +8,10 @@ import { computed, ref, useId } from 'vue';
 
 import AiCard from '../components/AiCard.vue';
 
-/** The key, the shared settings form and what the add-in does with email, in this Outlook app. */
+/** The AI connection, the shared settings form and what the add-in does with email, in this Outlook app. */
 const props = defineProps<{
-  ai: ApiKeyService;
+  ai: AiService;
+  methods: readonly AiMode[];
   text: AddinText;
   settings: Settings;
   save: (changes: SettingsChanges) => Promise<PatchSettingsResult>;
@@ -64,7 +65,7 @@ async function submit(): Promise<void> {
       <h1 class="ew-page__title">{{ text.addin.pane.settings }}</h1>
     </header>
 
-    <AiCard :ai="ai" />
+    <AiCard :ai="ai" :methods="methods" :helper-unavailable="text.addin.pane.helperUnavailable" />
 
     <form class="ew-addin-settings" @submit.prevent="submit">
       <SettingsForm :settings="current" :text="options" @change="change" />

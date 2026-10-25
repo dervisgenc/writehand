@@ -3,7 +3,7 @@
   "private": true,
   "license": "MIT",
   "type": "module",
-  "description": "The API key method shared by the browser extension and the Outlook add-in: encrypted key vault, connection choices and the Groq, OpenRouter and OpenAI providers",
+  "description": "The AI connection shared by the browser extension and the Outlook add-in: the helper app client, the API key method (encrypted key vault, Groq, OpenRouter and OpenAI providers) and the method choice",
   "exports": {
     ".": "./src/index.ts"
   },

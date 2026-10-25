@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 import { aiInputSchema } from './ai';
-import { ERROR_CODES } from './errors';
+import { appError, ERROR_CODES, type AppError, type ErrorCode } from './errors';
+import { err, ok, type Result } from './result';
 
 /**
  * The message envelope shared by the extension's own messages (`runtime-messages.ts`) and by
@@ -58,3 +59,27 @@ export const runtimeResponseEnvelopeSchema = z.discriminatedUnion('ok', [
 ]);
 
 export type RuntimeResponseEnvelope = z.infer<typeof runtimeResponseEnvelopeSchema>;
+
+/**
+ * Validates a response envelope: it must answer `requestId` and carry a payload of `schema`.
+ * Shared by the extension's own messages and every transport to the helper app.
+ */
+export function readResponse(raw: unknown, requestId: string, schema: z.ZodType): Result<unknown, AppError> {
+  const response = runtimeResponseEnvelopeSchema.safeParse(raw);
+  if (!response.success || response.data.requestId !== requestId) {
+    return err(appError('MESSAGE_REJECTED'));
+  }
+  if (!response.data.ok) {
+    return err(appError(response.data.error.code));
+  }
+  const payload = schema.safeParse(response.data.payload);
+  return payload.success ? ok(payload.data) : err(appError('MESSAGE_REJECTED'));
+}
+
+/** The failure answer a transport gives when the helper app cannot be reached or answer in time. */
+export function failureResponse(
+  requestId: string,
+  code: ErrorCode = 'AI_HOST_UNAVAILABLE',
+): RuntimeResponseEnvelope {
+  return { protocolVersion: PROTOCOL_VERSION, requestId, ok: false, error: { code } };
+}

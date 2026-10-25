@@ -95,10 +95,17 @@ onUnmounted(() => {
       {{ text.addin.pane.loading }}
     </p>
     <template v-else>
-      <FirstRunView v-if="view === 'first-run'" :ai="session.ai" :text="text" @done="showPanel" />
+      <FirstRunView
+        v-if="view === 'first-run'"
+        :ai="session.ai"
+        :methods="session.methods"
+        :text="text"
+        @done="showPanel"
+      />
       <SettingsView
         v-else-if="view === 'settings'"
         :ai="session.ai"
+        :methods="session.methods"
         :text="text"
         :settings="session.settings.value"
         :save="session.saveSettings"

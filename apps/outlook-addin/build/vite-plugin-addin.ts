@@ -1,16 +1,29 @@
+import { OUTLOOK_BRIDGE } from '@writehand/contracts';
 import type { Plugin } from 'vite';
 
 import { contentSecurityPolicy, OFFICE_JS_URL } from './addin-config';
 import { createManifest } from './manifest';
 
 export interface AddinPluginOptions {
-  /** The origin the manifest points to; without one, no manifest is written. */
-  readonly origin: string | null;
+  /** The origin the manifest points to. */
+  readonly origin: string;
   readonly version: string;
+  /**
+   * Served by the helper app: the pane gets the `<meta>` the helper app fills with its token
+   * for helper app requests (`OUTLOOK_BRIDGE`).
+   */
+  readonly bridge: boolean;
 }
+
+/**
+ * The npm packages bundled into the pages, by folder: the helper app's release build adds their
+ * licenses to its third-party notices. Not a page file; the helper app does not carry it.
+ */
+export const THIRD_PARTY_LIST = 'third-party-packages.json';
 
 const CSP_MARKER = '<!-- writehand:csp -->';
 const OFFICE_MARKER = '<!-- writehand:office-js -->';
+const BRIDGE_MARKER = '<!-- writehand:bridge -->';
 
 /**
  * Puts the Content Security Policy and the Office.js script into the task pane's pages and
@@ -35,25 +48,30 @@ export function addinPlugin(options: AddinPluginOptions): Plugin {
             CSP_MARKER,
             `<meta http-equiv="Content-Security-Policy" content="${contentSecurityPolicy({ dev })}" />`,
           )
-          .replace(OFFICE_MARKER, `<script src="${OFFICE_JS_URL}"></script>`);
+          .replace(OFFICE_MARKER, `<script src="${OFFICE_JS_URL}"></script>`)
+          .replace(
+            BRIDGE_MARKER,
+            options.bridge ? `<meta name="${OUTLOOK_BRIDGE.tokenMeta}" content="">` : '',
+          );
       },
     },
     configureServer(server) {
       server.middlewares.use('/manifest.xml', (_request, response) => {
-        if (options.origin === null) {
-          response.statusCode = 404;
-          response.end();
-          return;
-        }
         response.setHeader('Content-Type', 'application/xml; charset=utf-8');
         response.end(createManifest({ origin: options.origin, version: options.version }));
       });
     },
     generateBundle() {
-      if (options.origin === null) {
-        this.warn('No WRITEHAND_ADDIN_ORIGIN: the task pane was built without manifest.xml.');
-        return;
+      const packages = new Set<string>();
+      for (const id of this.getModuleIds()) {
+        const folder = /^(.*node_modules[\\/](?:@[^\\/]+[\\/])?[^\\/]+)[\\/]/.exec(id)?.[1];
+        if (folder !== undefined) packages.add(folder);
       }
+      this.emitFile({
+        type: 'asset',
+        fileName: THIRD_PARTY_LIST,
+        source: JSON.stringify([...packages].sort()),
+      });
       this.emitFile({
         type: 'asset',
         fileName: 'manifest.xml',

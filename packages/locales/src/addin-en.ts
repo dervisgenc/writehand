@@ -5,7 +5,7 @@ import type { AddinOwnText } from './addin-text';
 export const addinEn: AddinOwnText = {
   manifest: {
     description:
-      'Revise, translate, reply to and write emails in Outlook with your own AI key from Groq, OpenRouter or OpenAI. Results appear as a preview; nothing is written to your draft without your approval.',
+      'Revise, translate, reply to and write emails in Outlook with your ChatGPT or Claude plan through the Writehand helper app, or your own API key. Results appear as a preview; nothing is written to your draft without your approval.',
     groupLabel: PRODUCT_NAME,
     buttonLabel: PRODUCT_NAME,
     buttonTooltip: `Open ${PRODUCT_NAME} to revise, translate or write this email. Nothing is written or sent without your approval.`,
@@ -16,16 +16,19 @@ export const addinEn: AddinOwnText = {
     loading: 'Loading…',
     noItem: 'Select an email or open a draft to start.',
     outsideOutlook: `${PRODUCT_NAME} runs inside Outlook. Open it with the ${PRODUCT_NAME} button of an email or a draft.`,
+    helperUnavailable:
+      'The ChatGPT and Claude plans run in the Writehand helper app, which serves this pane, but it did not answer. Run writehand outlook status in a terminal, or use an API key.',
   },
   firstRun: {
     title: `Welcome to ${PRODUCT_NAME}`,
-    lead: 'Connect your own API key once in this Outlook app. Groq and OpenRouter offer free models.',
-    steps: ['Connect an API key', 'Try it'],
+    lead: 'Choose how to connect, once in this Outlook app: your ChatGPT or Claude plan through the helper app, or your own API key (Groq and OpenRouter offer free models).',
+    steps: ['Choose a connection', 'Try it'],
     success: 'Everything works. Select an email or open a draft and choose what to do.',
     start: 'Start',
   },
   ai: {
-    description: 'Write emails with your own API key from Groq, OpenRouter or OpenAI.',
+    description:
+      'Write emails with your ChatGPT or Claude plan through the helper app, or with your own API key from Groq, OpenRouter or OpenAI.',
     apiNote: (provider) =>
       `Your key is stored encrypted in this Outlook app and sent only to ${provider}. Paid usage is billed by ${provider}.`,
     keySaved: (provider) => `${provider} key saved, encrypted in this Outlook app.`,
@@ -38,13 +41,13 @@ export const addinEn: AddinOwnText = {
     AI_KEY_STORAGE_FAILED:
       'This Outlook app could not store or read the key securely, so nothing was saved. Try again; if it keeps failing, Outlook does not keep data for add-ins on this computer.',
     AI_HOST_UNAVAILABLE:
-      'The ChatGPT and Claude plans are not available in Outlook yet. Connect an API key instead.',
+      'The Writehand helper app did not answer. Check that it runs (writehand outlook status), or connect an API key.',
   },
   privacyPoints: [
-    `${PRODUCT_NAME}’s page is loaded from its web address each time it opens, and Microsoft’s Office.js from Microsoft. No email content or key is sent to either.`,
-    'Your preferences and the encrypted API key are stored only in this Outlook app on this device. They are not synchronized, not stored in your mailbox and not shared with the browser extension.',
+    `${PRODUCT_NAME}’s pane is served by its helper app on this computer; only Microsoft’s Office.js is loaded from the internet. No email content or key is sent to Microsoft.`,
+    'Your preferences and an encrypted API key are stored only in this Outlook app on this device. ChatGPT sign-ins stay in the helper app on this computer, which the browser extension uses too. Nothing is stored in your mailbox.',
     `${PRODUCT_NAME} reads only the open email or draft, while you use it, and keeps it in memory.`,
-    'Text is sent to the AI provider you chose (Groq, OpenRouter or OpenAI) only when you select Revise, Translate, Write or Draft reply.',
+    'Text is sent only when you select Revise, Translate, Write or Draft reply, and only to the method you chose: ChatGPT or Claude through the helper app, or Groq, OpenRouter or OpenAI with your key.',
     'Results appear as a preview first and are written to your draft only after you approve them.',
     `${PRODUCT_NAME} never sends email; a reply it opens is a draft.`,
   ],

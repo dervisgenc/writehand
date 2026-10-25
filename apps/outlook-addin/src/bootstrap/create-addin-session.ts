@@ -1,15 +1,20 @@
 import {
+  connectionService,
+  createAiConnection,
   createAiConnectionStore,
   createApiKeyConnection,
   createApiKeyProviders,
-  createApiKeyService,
   createDirectProcessor,
+  createHelperClient,
   createIndexedDbKeyStore,
   createSecretVault,
+  createUnavailableHelper,
+  type AiService,
   type ApiKeyProvider,
-  type ApiKeyService,
 } from '@writehand/ai-connection';
 import {
+  AI_MODES,
+  type AiMode,
   type ApiProvider,
   type MailConnector,
   type Settings,
@@ -34,6 +39,7 @@ import {
 import { shallowRef, type ShallowRef } from 'vue';
 
 import { copyText } from '../platform/clipboard';
+import { bridgeToken, createBridgeTransport } from '../platform/helper-bridge';
 import type { OfficeHost } from '../platform/office-host';
 import { createLocalStorageArea, keyDatabaseName, onStorageChanged } from '../platform/storage';
 
@@ -41,7 +47,12 @@ export interface AddinSession {
   readonly panel: PanelSessionDependencies;
   readonly settings: Readonly<ShallowRef<Settings>>;
   saveSettings(changes: SettingsChanges): Promise<PatchSettingsResult>;
-  readonly ai: ApiKeyService;
+  readonly ai: AiService;
+  /**
+   * The connection methods this pane offers: all three when the helper app served it, otherwise
+   * only API keys.
+   */
+  readonly methods: readonly AiMode[];
   /** Opens the panel's work for the item Outlook shows: its draft, its email, or nothing yet. */
   openForCurrentItem(): void;
   dispose(): void;
@@ -103,7 +114,11 @@ export async function createAddinSession(
     // The page's Content Security Policy allows exactly the three providers.
     access: async () => true,
   });
-  const ai = createApiKeyService({ store: connectionStore, apiKeys });
+  // The helper app wrote its token into the page it served; without one the plans are not offered.
+  const token = bridgeToken(document);
+  const helper =
+    token === null ? createUnavailableHelper() : createHelperClient(createBridgeTransport(token));
+  const ai = connectionService(createAiConnection({ store: connectionStore, apiKeys, helper }));
   const direct = createDirectProcessor(ai, async () => ({
     standingInstructions: (await settingsStore.read()).settings.writingInstructions,
   }));
@@ -146,6 +161,7 @@ export async function createAddinSession(
       return result;
     },
     ai,
+    methods: token === null ? ['api-key'] : AI_MODES,
     openForCurrentItem() {
       const { activeThread, composers } = connector.getPageState();
       const [composer] = composers;

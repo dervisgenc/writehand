@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest';
 import {
   contentSecurityPolicy,
   DEV_ORIGIN,
+  HELPER_ORIGIN,
   OFFICE_JS_URL,
   PROVIDER_ORIGINS,
-  productionOrigin,
 } from '../../../apps/outlook-addin/build/addin-config';
 import {
   createManifest,
@@ -119,12 +119,9 @@ describe('Outlook add-in page policy', () => {
     expect(contentSecurityPolicy({ dev: true })).toContain('wss://localhost:3000');
   });
 
-  it('accepts only an HTTPS production origin other than localhost', () => {
-    expect(productionOrigin(undefined)).toBeNull();
-    expect(productionOrigin('https://addin.example.org/')).toBe('https://addin.example.org');
-    expect(() => productionOrigin('http://addin.example.org')).toThrow();
-    expect(() => productionOrigin(DEV_ORIGIN)).toThrow();
-    expect(() => productionOrigin('https://example.org/writehand/')).toThrow();
+  it("serves the release build from the helper app's fixed local origin", () => {
+    expect(HELPER_ORIGIN).toBe('https://localhost:41537');
+    expect(HELPER_ORIGIN).not.toBe(DEV_ORIGIN);
   });
 });
 

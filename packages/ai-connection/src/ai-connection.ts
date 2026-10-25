@@ -13,18 +13,14 @@ import {
   type HelperStatus,
   type Result,
 } from '@writehand/contracts';
-import {
-  apiKeyReady,
-  type AiConnectionPreferences,
-  type AiConnectionStore,
-  type ApiKeyConnection,
-} from '@writehand/ai-connection';
 
+import type { AiConnectionPreferences, AiConnectionStore } from './ai-connection-store';
+import { apiKeyReady, type ApiKeyConnection } from './api-key-connection';
 import type { HelperClient } from './helper-client';
 
 /** The same limits as the helper app's own generations; the helper app enforces its timeout itself. */
-const GENERATION_TIMEOUT_MS = 120_000;
-const MAX_RUNNING_GENERATIONS = 4;
+export const GENERATION_TIMEOUT_MS = 120_000;
+export const MAX_RUNNING_GENERATIONS = 4;
 
 type HelperState = Result<HelperStatus, AppError>;
 
@@ -38,16 +34,19 @@ function initialMode(helper: HelperState): AiMode {
 }
 
 /**
- * The AI connection behind every generation. The method is chosen per browser profile: the
- * API key method runs here in the background, ChatGPT and Claude run in the helper app. The
- * helper app keeps one method for all browsers, so it is switched to this browser's method
- * before it is shown or used.
+ * The AI connection behind every generation. The method is chosen per browser profile (in the
+ * extension's background) or per Outlook application (in the add-in's task pane): the API key
+ * method runs in that page, ChatGPT and Claude run in the helper app. The helper app keeps one
+ * method for all its clients, so it is switched to this client's method before it is shown or
+ * used.
  */
 export function createAiConnection(deps: {
   store: AiConnectionStore;
   apiKeys: ApiKeyConnection;
   helper: HelperClient;
+  timeoutMs?: number;
 }) {
+  const timeoutMs = deps.timeoutMs ?? GENERATION_TIMEOUT_MS;
   /** Running generations; `helper` once the request went to the helper app, which then cancels it. */
   const running = new Map<string, { readonly abort: AbortController; helper: boolean }>();
 
@@ -182,7 +181,7 @@ export function createAiConnection(deps: {
         return err(appError('AI_BUSY'));
       const abort = new AbortController();
       running.set(generationId, { abort, helper: false });
-      const timer = setTimeout(() => abort.abort(), GENERATION_TIMEOUT_MS);
+      const timer = setTimeout(() => abort.abort(), timeoutMs);
       try {
         const mode = await currentMode(await deps.store.read());
         return isHelperMode(mode)

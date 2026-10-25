@@ -1,12 +1,11 @@
 import {
   appError,
   err,
-  ok,
   PROTOCOL_VERSION,
+  readResponse,
   RUNTIME_RESPONSE_PAYLOADS,
   RUNTIME_ROUTES,
   runtimeRequestSchema,
-  runtimeResponseEnvelopeSchema,
   type AppError,
   type Result,
   type RuntimeRequest,
@@ -14,7 +13,6 @@ import {
   type RuntimeResponseEnvelope,
   type RuntimeResponsePayload,
 } from '@writehand/contracts';
-import type { ZodType } from 'zod';
 
 type RequestOf<T extends RuntimeRequestType> = Extract<RuntimeRequest, { type: T }>;
 export type RequestPayload<T extends RuntimeRequestType> = RequestOf<T>['payload'];
@@ -36,22 +34,6 @@ export function createRequest<T extends RuntimeRequestType>(
   const request = { protocolVersion: PROTOCOL_VERSION, requestId, type, payload };
   // Once the schema validates, the type is already determined by the input's `type` field.
   return runtimeRequestSchema.parse(request) as RequestOf<T>;
-}
-
-/**
- * Validates a response envelope: it must answer `requestId` and carry a payload of `schema`.
- * Shared by the extension's own messages and the helper app's native messages.
- */
-export function readResponse(raw: unknown, requestId: string, schema: ZodType): Result<unknown, AppError> {
-  const envelope = runtimeResponseEnvelopeSchema.safeParse(raw);
-  if (!envelope.success || envelope.data.requestId !== requestId) {
-    return err(appError('MESSAGE_REJECTED'));
-  }
-  if (!envelope.data.ok) {
-    return err(appError(envelope.data.error.code));
-  }
-  const payload = schema.safeParse(envelope.data.payload);
-  return payload.success ? ok(payload.data) : err(appError('MESSAGE_REJECTED'));
 }
 
 /**

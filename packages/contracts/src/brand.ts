@@ -25,6 +25,14 @@ export const CHROMIUM_EXTENSION_IDS: readonly string[] = [];
  */
 export const OUTLOOK_ADDIN_ID = '065738bd-ff6b-4b84-8131-53b192cafbe9';
 
+/**
+ * Where the helper app serves the Outlook add-in on the user's computer (`writehand outlook
+ * enable`). The manifest names this origin, so it never changes once a manifest has been given
+ * out; Windows does not hand out ports below 49152 to other programs on its own.
+ */
+export const OUTLOOK_ADDIN_PORT = 41537;
+export const OUTLOOK_ADDIN_ORIGIN = `https://localhost:${OUTLOOK_ADDIN_PORT}`;
+
 /** Publisher of the Outlook add-in, shown in Outlook's add-in dialog. */
 export const OUTLOOK_ADDIN_PROVIDER_NAME = 'Derviş Genç';
 

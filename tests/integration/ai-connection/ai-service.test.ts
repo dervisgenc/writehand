@@ -1,18 +1,23 @@
 import {
+  connectionService,
+  createAiConnection,
   createAiConnectionStore,
   createApiKeyConnection,
-  createApiKeyService,
   createDirectProcessor,
+  createUnavailableHelper,
   MAX_RUNNING_GENERATIONS,
   SECRETS_STORAGE_KEY,
   type ApiKeyProvider,
+  type HelperClient,
 } from '@writehand/ai-connection';
 import { appError, err, ok, type AiInput, type ApiProvider, type PreparedAction } from '@writehand/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  fakeHelper,
   fakeProvider,
   GROQ_MODELS,
+  helperStatus,
   memoryArea,
   memoryKeys,
   OPENAI_MODELS,
@@ -31,7 +36,7 @@ const input: AiInput = {
   messages: [],
 };
 
-function setup(options: { timeoutMs?: number; groq?: ApiKeyProvider } = {}) {
+function setup(options: { timeoutMs?: number; groq?: ApiKeyProvider; helper?: HelperClient } = {}) {
   const area = memoryArea();
   const store = createAiConnectionStore(area);
   const providers = {
@@ -39,8 +44,9 @@ function setup(options: { timeoutMs?: number; groq?: ApiKeyProvider } = {}) {
     openrouter: fakeProvider([{ id: 'vendor/free:free', label: 'Free', free: true }], null),
     openai: fakeProvider(OPENAI_MODELS, null),
   } satisfies Record<ApiProvider, ApiKeyProvider>;
-  const service = createApiKeyService({
+  const connection = createAiConnection({
     store,
+    helper: options.helper ?? createUnavailableHelper(),
     apiKeys: createApiKeyConnection({
       store,
       vault: vault(area, memoryKeys()),
@@ -49,11 +55,11 @@ function setup(options: { timeoutMs?: number; groq?: ApiKeyProvider } = {}) {
     }),
     ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
   });
-  return { area, providers, service };
+  return { area, providers, service: connectionService(connection) };
 }
 
-describe('API key service (a page without the helper app)', () => {
-  it('reports only the API key method, not ready until a key is connected', async () => {
+describe('AI service of a page without the helper app', () => {
+  it('reports the API key method, not ready until a key is connected', async () => {
     const { service } = setup();
     expect(await service.status()).toMatchObject({
       mode: 'api-key',
@@ -80,12 +86,11 @@ describe('API key service (a page without the helper app)', () => {
     expect(JSON.stringify(await service.status())).not.toContain('good-key-123');
   });
 
-  it('refuses the ChatGPT and Claude plans, which need the helper app', async () => {
+  it('keeps a plan choice without the helper app, but is not ready and cannot generate with it', async () => {
     const { service } = setup();
-    expect(await service.command({ action: 'set-mode', mode: 'chatgpt' })).toEqual(
-      err(appError('AI_HOST_UNAVAILABLE')),
-    );
-    expect((await service.status()).mode).toBe('api-key');
+    expect((await service.command({ action: 'set-mode', mode: 'chatgpt' })).ok).toBe(true);
+    expect(await service.status()).toMatchObject({ mode: 'chatgpt', ready: false, helper: null });
+    expect(await service.generate(input)).toEqual(err(appError('AI_HOST_UNAVAILABLE')));
   });
 
   it('generates with the saved key and model', async () => {
@@ -171,5 +176,56 @@ describe('API key service (a page without the helper app)', () => {
     expect(vi.mocked(providers.groq.generate).mock.calls[0]?.[0]).toMatchObject({
       standingInstructions: 'Always formal.',
     });
+  });
+});
+
+describe('AI service of a page that reaches the helper app', () => {
+  it("starts with the helper app's method and generates through it", async () => {
+    const helper = fakeHelper(helperStatus({ mode: 'claude-code', ready: true }));
+    const { service, providers } = setup({ helper: helper.client });
+
+    expect(await service.status()).toMatchObject({ mode: 'claude-code', ready: true });
+    expect(await service.generate(input)).toEqual(ok({ text: 'From the helper app' }));
+    expect(providers.groq.generate).not.toHaveBeenCalled();
+    const generation = helper.requests.find((request) => request.type === 'AI_GENERATE');
+    expect(generation?.payload).toMatchObject({ input });
+  });
+
+  it("switches the helper app to this page's plan before it generates", async () => {
+    const helper = fakeHelper(helperStatus({ mode: 'chatgpt', ready: true }));
+    const { service } = setup({ helper: helper.client });
+
+    await service.command({ action: 'set-mode', mode: 'claude-code' });
+    helper.state.status = { ...helper.state.status!, mode: 'chatgpt' };
+    await service.generate(input);
+
+    const types = helper.requests.map((request) =>
+      request.type === 'AI_COMMAND' ? `${request.type}:${request.payload.action}` : request.type,
+    );
+    expect(types.slice(-3)).toEqual(['AI_STATUS', 'AI_COMMAND:set-mode', 'AI_GENERATE']);
+    expect(helper.state.status?.mode).toBe('claude-code');
+  });
+
+  it('asks the helper app to cancel a generation the caller cancels', async () => {
+    const helper = fakeHelper(helperStatus({ mode: 'chatgpt', ready: true }));
+    let finish: (() => void) | null = null;
+    const slowClient: HelperClient = {
+      ...helper.client,
+      generate: (generationId, request) =>
+        new Promise((resolve) => {
+          finish = () => void helper.client.generate(generationId, request).then(resolve);
+        }),
+    };
+    const { service } = setup({ helper: slowClient });
+    const abort = new AbortController();
+
+    const running = service.generate(input, abort.signal);
+    await vi.waitFor(() => expect(finish).not.toBeNull());
+    abort.abort();
+    await vi.waitFor(() =>
+      expect(helper.requests.some((request) => request.type === 'AI_CANCEL')).toBe(true),
+    );
+    finish!();
+    await running;
   });
 });

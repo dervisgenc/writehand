@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { ApiKeyService } from '@writehand/ai-connection';
+import type { AiService } from '@writehand/ai-connection';
+import type { AiMode } from '@writehand/contracts';
 import type { AddinText } from '@writehand/locales';
 import { AppIcon } from '@writehand/ui';
 import { computed, ref, useId } from 'vue';
@@ -7,10 +8,11 @@ import { computed, ref, useId } from 'vue';
 import AiCard from '../components/AiCard.vue';
 
 /**
- * First run: connect a key, then revise a made-up email to check that everything works. The
- * sample goes only to the chosen provider; nothing is written to a draft or sent.
+ * First run: choose how to connect (a plan through the helper app, or an API key), then revise a
+ * made-up email to check that everything works. The sample goes only to the chosen method;
+ * nothing is written to a draft or sent.
  */
-const props = defineProps<{ ai: ApiKeyService; text: AddinText }>();
+const props = defineProps<{ ai: AiService; methods: readonly AiMode[]; text: AddinText }>();
 const emit = defineEmits<{ done: [] }>();
 const ids = { title: useId(), tryIt: useId() };
 const ready = ref(false);
@@ -52,7 +54,12 @@ async function tryRevision() {
       </div>
     </header>
 
-    <AiCard :ai="ai" @ready="ready = $event" />
+    <AiCard
+      :ai="ai"
+      :methods="methods"
+      :helper-unavailable="text.addin.pane.helperUnavailable"
+      @ready="ready = $event"
+    />
 
     <section v-if="ready" class="ew-settings-card" :aria-labelledby="ids.tryIt">
       <header class="ew-settings-card__header">

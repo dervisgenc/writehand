@@ -1,7 +1,9 @@
 import {
+  createAiConnection,
   createAiConnectionStore,
   createApiKeyConnection,
   createApiKeyProviders,
+  createHelperClient,
   createIndexedDbKeyStore,
   createSecretVault,
 } from '@writehand/ai-connection';
@@ -21,9 +23,7 @@ import {
   openWelcomePage,
 } from '../src/platform/extension-browser';
 import { createAiHandlers } from '../src/platform/ai-background';
-import { createAiConnection } from '../src/platform/ai-connection';
 import { createAiSenderPolicy } from '../src/platform/ai-sender-policy';
-import { createHelperClient } from '../src/platform/helper-client';
 import { createNativeClient } from '../src/platform/native-client';
 import { isSupportedUrl } from '../src/platform/extension-client';
 import { createRuntimeHandler, toMessageListener } from '../src/platform/runtime-messaging';

@@ -1,8 +1,10 @@
 import { webcrypto } from 'node:crypto';
 
 import {
+  createAiConnection,
   createAiConnectionStore,
   createApiKeyConnection,
+  createHelperClient,
   createSecretVault,
   type ApiKeyProvider,
   type EncryptionKeyStore,
@@ -19,9 +21,6 @@ import {
   type StorageArea,
 } from '@writehand/contracts';
 import { vi } from 'vitest';
-
-import { createAiConnection } from '../../../apps/browser-extension/src/platform/ai-connection';
-import { createHelperClient } from '../../../apps/browser-extension/src/platform/helper-client';
 
 /** `storage.local` in memory; values are cloned like the browser does. */
 export function memoryArea(): StorageArea & { data: Record<string, unknown> } {
