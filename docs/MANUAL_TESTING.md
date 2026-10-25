@@ -192,10 +192,12 @@ Gmail support is new. Reading a conversation and finding a compose window are ve
 
 The add-in's automated tests run against an in-memory Office.js ([Outlook add-in → Automated tests](./OUTLOOK_ADDIN.md#automated-tests)); only this checklist shows what a real Outlook does. Check each Outlook application separately: the new Outlook for Windows, classic Outlook for Windows and Outlook on the web differ in their body HTML, their webview and their requirement sets. The [rules](#rules) above apply; a check that was not done in a client is not supported there.
 
-**Setup.** Install the certificate, build, serve and sideload as in [Outlook add-in → Development on Windows](./OUTLOOK_ADDIN.md#development-on-windows). Use a Microsoft 365 work or school mailbox. Two builds are useful:
+**Setup.** Use a Microsoft 365 work or school mailbox. Two ways to serve the pane are useful:
 
-- `pnpm addin:build:sample` replaces the three providers with local stand-ins: any key of ten or more characters connects, every result is a labeled sample of its input (for example "… (revised sample)"), and nothing leaves the computer. Use it to check what Outlook does without an AI account and without sending any mail text to a provider.
-- `pnpm addin:build:local` is what users get. Use it with a real key for the provider checks.
+- **The helper app** (what users get): install the helper app built with the pane inside (`pnpm addin:build && pnpm ai:sea`, then `writehand.exe install`), run `writehand outlook enable` and add `outlook-manifest.xml` as described in [Outlook add-in → Install](./OUTLOOK_ADDIN.md#install). Use it for the plans and the helper app checks below.
+- **The sample build** on `https://localhost:3000` (`pnpm addin:certs`, `pnpm addin:build:sample`, `pnpm addin:serve`, then **Add from File** with `apps/outlook-addin/dist-local/manifest.xml`): the three API key providers are replaced with local stand-ins; any key of ten or more characters connects, every result is a labeled sample of its input (for example "… (revised sample)"), and nothing leaves the computer. Use it to check what Outlook does without an AI account.
+
+Both manifests carry the same add-in ID: remove one in **Custom Addins** before adding the other.
 
 **Automating the checks.** The new Outlook's webviews cannot be reached with a debugging port (`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` is ignored), so a script has to work through Windows UI Automation. In read mode, never list the pane's texts or checkbox names: the context preview shows the open email's sender and text. Query controls by their fixed names only, and report counts and yes/no answers. Set text fields through UI Automation and read them back instead of sending keystrokes, which can land in another field. Check colors by sampling a few pixels of the pane, not by saving screenshots.
 
@@ -214,6 +216,10 @@ The add-in's automated tests run against an in-memory Office.js ([Outlook add-in
 - [ ] **Theme:** switch Outlook between light and dark (**Settings → General → Appearance**): the pane follows without being reopened. Switch back.
 - [ ] **Copy:** **Copy** puts the result on the clipboard and says "Copied to clipboard." (Save and restore the clipboard if a script does this.)
 - [ ] **Provider** (real key): connecting lists the provider's models; a generation succeeds; the provider is the only host besides the add-in's own and Microsoft's.
+- [ ] **Helper app server:** `writehand outlook enable` shows Windows' security warning for "Writehand local Outlook add-in (*user*)"; after **Yes** the certificate is under the current user's trusted roots (`certmgr.msc`), `writehand outlook status` reports the server, no console window is open, and `outlook-manifest.xml` is next to the program. Declining the warning changes nothing.
+- [ ] **Plans in the pane:** the pane loads from `https://localhost:41537` and shows the helper app's method (for example "Using ChatGPT plan"). Revise a made-up sentence with the ChatGPT plan, then switch to the Claude plan in the settings and revise again; apply one result to an empty draft. Without a connected account, **Continue with ChatGPT** opens the system browser and the pane follows the sign-in.
+- [ ] **Server restarts:** with the pane open, run `writehand.exe install` again (the update path) and end the server process, then start the `Writehand Outlook` sign-in command; each time a new server runs without a window and the open pane still reaches it.
+- [ ] **Off:** `writehand outlook disable` asks to remove the certificate, removes the sign-in entry, the copy and the files; the pane no longer loads. `writehand status` in a browser still works (native messaging).
 - [ ] **Pop-out draft:** open the pane in a draft in its own window and write once.
 - [ ] **Nothing sent:** **Sent Items** holds none of the test drafts; discard every test draft and reply.
 
@@ -222,6 +228,7 @@ Record each run:
 | Date | Client and version | Webview | Windows | Account | Language | Build | Provider | Checks passed | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-10-23 | New Outlook 1.2026.1013.100 | WebView2 155.0.4283.62 | 11 Pro 10.0.26200 | Microsoft 365 work or school | English | `addin:build:sample` from `https://localhost:3000` | Sample (no network) | Install, first run, key after restart, new message, empty draft, whole body and undo, selection, table, read mode, pinning, theme, copy, nothing sent | See below |
+| 2026-10-25 | New Outlook (same) | WebView2 155 | 11 Pro 10.0.26200 | Microsoft 365 work or school | English | Helper app 0.1.0 built from `feat/outlook-addin` (`ai:sea`), `https://localhost:41537` | ChatGPT plan, Claude plan (helper app) | Helper app server, plans in the pane, empty draft, server restarts, nothing sent | See below |
 
 **Run of 2026-10-23, new Outlook for Windows.** Driven by a UI Automation script; one cropped screenshot of a made-up test draft was viewed for the table check and deleted.
 
@@ -241,3 +248,16 @@ Verified in this client:
 - **Sent Items** held none of the test items afterwards; the three test drafts and the reply draft were discarded (they are in **Deleted Items**).
 
 Not checked in this run: a real provider (connecting a key, models, a generation, CORS from the pane), **Draft reply** with a received email as context, translation, a pop-out draft with the pane in it, a reply draft's quote and signature boundary, a non-empty reply draft, Outlook.com accounts, other interface languages, classic Outlook for Windows (not installed) and Outlook on the web.
+
+**Run of 2026-10-25, new Outlook for Windows, the helper app serving the pane.** Driven by a UI Automation script; made-up sentences only, no email context. Before it, a probe page served on `https://localhost:3000` measured what the pane may do: it is a frame of `https://outlook.office.com`; `local-network-access`, `loopback-network` and `local-network` are not allowed by its permissions policy and their permission state is `denied`; from a `localhost` page, requests to `http://127.0.0.1`, `https://localhost` and a WebSocket there all succeeded without a prompt.
+
+Verified in this client:
+
+- `writehand outlook enable` added the authority to the current user's trusted roots, started `writehand-outlook.exe` without a window, added the sign-in value and wrote the manifest. It finished within four seconds; the script did not see Windows' security warning (whether it appeared and was confirmed at once is not recorded). Over TLS with only that authority trusted, the server served the pane with its token and `frame-ancestors`, and refused requests without the token, from another origin, and control requests without the control token (403).
+- After the manifest was added with **Add from File** and Outlook restarted, the pane loaded from `https://localhost:41537` and showed "Using ChatGPT plan": the helper app's connected account, with no setup in the pane.
+- The ChatGPT plan revised a made-up sentence in about 3 seconds; **Apply to draft** wrote the result into the empty test draft once. Switched to the Claude plan in the pane's settings ("Connected · Ready to generate text"), the Claude plan revised another made-up sentence in about 4 seconds. Switched back to the ChatGPT plan afterwards.
+- `writehand.exe install` again (the update path) handed the server over to a new process; ending the server and starting the sign-in command started a new one, without a window. Native messaging (`HOST_INFO`, `AI_STATUS`) still answered from the same program.
+- **An open pane lost the helper app after a server restart**: each start wrote a new token into the page, so the open pane's requests were refused and it said the helper app did not answer. Fixed by keeping the token across restarts (`bridge.token`); after reinstalling, a restart with the pane open left it connected.
+- **Sent Items** held no test item afterwards; the test draft was discarded.
+
+Not checked in this run: a ChatGPT sign-in started from the pane, an API key from the pane, signing out of Windows and in again (the sign-in command was started by hand instead), `writehand outlook disable` and `uninstall` with the server on, classic Outlook, and an install on a clean machine.

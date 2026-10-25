@@ -29,10 +29,11 @@ The build is WXT (Vite) with Vue 3; nothing is downloaded at run time and no cod
 For the ChatGPT and Claude plans, the extension talks to a small helper app on the user's computer through native messaging (`com.dervisgenc.writehand`); API keys need no helper app. Its source is in `apps/ai-companion`; release builds are single programs made with Node.js's single executable application support:
 
 ```sh
-pnpm ai:sea   # run with Node.js 24 on each target system
+pnpm addin:build   # the Outlook add-in's task pane, which the program carries
+pnpm ai:sea        # run with Node.js 24 on each target system
 ```
 
-The program and its third-party licenses are written to `apps/ai-companion/dist/release/`.
+The program and its third-party licenses (including the packages inside the add-in's task pane) are written to `apps/ai-companion/dist/release/`. The build stops if the add-in has not been built.
 
 ## Where things are
 

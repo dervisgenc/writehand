@@ -1,6 +1,6 @@
 # Privacy policy
 
-_Effective date: October 23, 2026_
+_Effective date: October 25, 2026_
 
 Writehand is a free, open-source writing assistant for Outlook on the web and Gmail. It consists of a browser extension and, for the ChatGPT and Claude plans, a small helper app that runs on your computer. An add-in for the Outlook applications is in development; how it differs is described in [Outlook add-in](#outlook-add-in-in-development). This policy covers all three.
 
@@ -59,15 +59,16 @@ While update checks are turned on (the default), the helper app asks GitHub at m
 
 ## Outlook add-in (in development)
 
-The Outlook add-in brings Writehand to the Outlook applications (first the new Outlook and classic Outlook for Windows) as an Office add-in. It is not released yet. It uses only the API key method; the ChatGPT and Claude plans are not available in it. Everything above applies, with these differences:
+The Outlook add-in brings Writehand to the Outlook applications (first the new Outlook and classic Outlook for Windows) as an Office add-in. It is not released yet. It uses the ChatGPT and Claude plans through the helper app, or your own API key. Everything above applies, with these differences:
 
-- **Where it runs.** The add-in is a web page that Outlook loads from the address in its manifest each time you open it, and Microsoft's Office.js library, which Outlook requires, is loaded from Microsoft. Like any website, that host and Microsoft see the request for the files (your IP address and browser details). No email content, text or key is ever sent to them. Writehand still has no server: the page sends your text only to the provider you chose.
+- **Where it runs.** The helper app serves the add-in's page on your computer (`https://localhost:41537`) after you turn this on with `writehand outlook enable`; the page comes from the helper app you installed, not from a website. Only Microsoft's Office.js library, which Outlook requires, is loaded from Microsoft, which sees that request (your IP address and browser details). No email content, text or key is sent to Microsoft or to Writehand. To serve the page over HTTPS, `writehand outlook enable` adds a certificate valid only for your computer's local addresses to your trusted certificates, with your confirmation; it contains no personal data.
+- **ChatGPT and Claude plans.** The page sends a plan's request to the helper app on the same computer, which handles it exactly as for the browser extension: your text goes to OpenAI (ChatGPT plan) or Anthropic (Claude plan) only when you request a generation. The helper app's accounts, tokens and model choice are shared with the browser extension on this computer.
 - **What it reads.** Only the item that is open in Outlook: the email you are reading, or the draft you are writing and the earlier messages quoted in it. It reads it only while you use the add-in, keeps it in memory and never writes it to disk. It cannot read other emails.
 - **What it writes.** Only the open draft, and only after you approve the preview. In a received email it can open a new reply with the result; that reply is a draft, and sending it is up to you.
 - **Permission.** The add-in asks Outlook for "read and write the current item" (`ReadWriteItem`), the narrowest permission that lets it write a draft. It does not ask for access to your mailbox, does not run when its pane is closed and has no access to sending.
 - **Settings and API keys.** Your preferences and your API key (encrypted as described above, with a key that no script can export) are stored in the add-in's storage in that Outlook application on that device. They are not synchronized, not stored in your mailbox and not shared with the browser extension, so you connect a key in each Outlook application you use.
-- **Network.** Besides loading its page and Office.js, the add-in connects only to the provider whose key you connected (`api.groq.com`, `openrouter.ai` or `api.openai.com`), and only when you request a generation or connect a key. Its Content Security Policy blocks every other address.
-- **Deleting your data.** Remove the key in the add-in's **Settings → AI connection → Remove key**, then remove the add-in in Outlook (**Get Add-ins → My add-ins**). Removing the add-in does not necessarily delete the data Outlook keeps for it.
+- **Network.** Besides Office.js, the add-in's page connects only to the helper app on your computer and, for the API key method, to the provider whose key you connected (`api.groq.com`, `openrouter.ai` or `api.openai.com`), only when you request a generation or connect a key. Its Content Security Policy blocks every other address.
+- **Deleting your data.** Remove a key in the add-in's **Settings → AI connection → Remove key**, remove the add-in in Outlook (**Get Add-ins → My add-ins**), and run `writehand outlook disable`, which stops the add-in server and removes its certificate and files. Removing the add-in does not necessarily delete the data Outlook keeps for it. The helper app's accounts are deleted as described below.
 
 ## What Writehand does not do
 

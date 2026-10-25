@@ -1,6 +1,6 @@
 # Helper app
 
-The helper app is a small program on the user's computer that runs Writehand's ChatGPT plan and Claude plan methods. The browser extension talks to it through native messaging under the name `com.dervisgenc.writehand`. Its source is in `apps/ai-companion`, with the providers in `packages/ai-openai` and `packages/ai-claude-code`. The API key method (Groq, OpenRouter, OpenAI) runs in the extension itself and does not need the helper app; see [API keys in the extension](#api-keys-in-the-extension).
+The helper app is a small program on the user's computer that runs Writehand's ChatGPT plan and Claude plan methods. The browser extension talks to it through native messaging under the name `com.dervisgenc.writehand`; on Windows it can also serve the Outlook add-in, which talks to it on its own local origin ([Outlook add-in server](#outlook-add-in-server-windows)). Its source is in `apps/ai-companion`, with the providers in `packages/ai-openai` and `packages/ai-claude-code`. The API key method (Groq, OpenRouter, OpenAI) runs in the extension itself and does not need the helper app; see [API keys in the extension](#api-keys-in-the-extension).
 
 See also: [Development guide](./DEVELOPMENT.md), [Releasing](./RELEASING.md), [Privacy policy](../PRIVACY.md), [Security policy](../SECURITY.md).
 
@@ -9,8 +9,9 @@ See also: [Development guide](./DEVELOPMENT.md), [Releasing](./RELEASING.md), [P
 - **ChatGPT sign-in** uses OpenAI's documented Sign in with ChatGPT flow for open-source, locally run apps, which returns to `http://127.0.0.1:<port>/auth/callback`. A browser extension cannot listen on a local port.
 - **Claude Code** is a program on the user's computer; an extension cannot start programs.
 - **ChatGPT tokens** (a refresh token that renews itself) are kept outside the browser, in a file only the user's account can read.
+- **The Outlook applications** run add-ins as web pages that cannot reach a local program from a public address; the helper app serves the Outlook add-in itself, so the add-in can use the same plans.
 
-The browser starts the helper app only when Writehand sends a request; there is no permanently running server. During a ChatGPT sign-in, the helper opens a loopback listener on a random port for at most five minutes. Writehand never reads ChatGPT cookies or another app's session files and never calls private `backend-api` endpoints.
+The browser starts the helper app only when Writehand sends a request. The only server that keeps running is the Outlook add-in server, and only after `writehand outlook enable` (Windows). During a ChatGPT sign-in, the helper opens a loopback listener on a random port for at most five minutes. Writehand never reads ChatGPT cookies or another app's session files and never calls private `backend-api` endpoints.
 
 The helper app is a single program built with Node.js's single executable application support, so users do not need Node.js. Every release ships it for macOS (Apple silicon and Intel), Linux (x64 and arm64) and Windows (x64; Windows on Arm runs it through emulation).
 
@@ -62,6 +63,7 @@ The installed program is `~/.local/share/writehand/writehand` on macOS and Linux
 | `uninstall [--delete-data]` | Removes every browser registration and the program. `--delete-data` also tries to revoke ChatGPT sessions and deletes the credentials folder; without it, credentials stay in place |
 | `status` | Version, system, registered browsers and whether Claude Code is ready. Never prints account or token details |
 | `update [--check]` | Installs a newer release after verifying its signature and checksum; `--check` only reports whether one exists |
+| `outlook enable \| disable \| status` | Windows: serves the Outlook add-in on `https://localhost:41537` ([Outlook add-in server](#outlook-add-in-server-windows)). `outlook serve` is the server itself, started at sign-in |
 | `version` | Prints the version |
 
 ## Files and locations
@@ -74,6 +76,7 @@ The installed program is `~/.local/share/writehand/writehand` on macOS and Linux
 | Browser manifest | `com.dervisgenc.writehand.json` in each browser's `NativeMessagingHosts` folder | `com.dervisgenc.writehand.<browser>.json` in the program folder |
 | How the browser finds it | The folder itself | Default value of `HKCU\Software\<location>\NativeMessagingHosts\com.dervisgenc.writehand` |
 | Credentials | `~/.config/writehand/credentials.json` (folder `0700`, file `0600`) | `%LOCALAPPDATA%\writehand\credentials.json` (folder ACL: only the user and SYSTEM) |
+| Outlook add-in server | — | `%LOCALAPPDATA%\writehand\outlook\` (the certificates, the server key, the pane's token, the running server's state); `writehand-outlook.exe` and `outlook-manifest.xml` next to the program; the value `Writehand Outlook` under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` |
 
 The manifest points directly to the program; a release install has no launcher. Browsers start native hosts with a minimal environment, so `install` records what it finds in the terminal in `config.json`: the Claude Code path (`WRITEHAND_CLAUDE_PATH`), `CLAUDE_CONFIG_DIR` and, for an npm-installed Claude Code, the `node` folder. The host adds these to its environment at start-up and falls back to `os.userInfo()` when `USER` is missing (Claude Code finds its macOS Keychain entry by user name). A damaged `config.json`, or one written by a newer version, falls back to defaults; the host always starts.
 
@@ -116,6 +119,36 @@ Design decisions:
 - **Locking and atomic writes.** The credential store uses a `proper-lockfile` lock and a temporary file plus rename. On Windows, a virus scanner or the search indexer may hold a new file briefly, so the rename is retried for about 1.5 seconds.
 - **Replacing the running program.** Windows cannot delete a running `.exe` but can rename it. Install and update move the running program aside as `writehand.exe.<random>.old`, put the new one in place and delete the old copy the next time the helper starts. `uninstall` removes its own folder through a hidden Windows PowerShell process that waits until the program has exited; the script is passed with `-EncodedCommand` and the folder and process ID through environment variables, so no path is ever parsed as a command line.
 - **Opening the browser for sign-in.** `rundll32.exe url.dll,FileProtocolHandler <URL>` without a shell, so `&` in the URL survives. Only `https://` addresses are opened, because this method can also start local files.
+
+## Outlook add-in server (Windows)
+
+The Outlook applications load add-ins as web pages over HTTPS, and a page from a public address cannot reach a local program (the new Outlook does not grant its add-in frames Chromium's Local Network Access; see [Outlook add-in → Why the helper app serves the pane](./OUTLOOK_ADDIN.md#why-the-helper-app-serves-the-pane)). So the helper app carries the add-in's task pane and serves it on `https://localhost:41537`; the pane reaches the ChatGPT and Claude plans on that same origin. It is off until the user turns it on:
+
+```powershell
+writehand outlook enable    # trust the local certificate, start the server, write the manifest
+writehand outlook status    # is it running, until when is the certificate valid
+writehand outlook disable   # stop it and remove the certificate, the sign-in entry and its files
+```
+
+**`enable`** (`apps/ai-companion/src/outlook.ts`):
+
+1. Creates a certificate authority and the server's certificate (`src/local-certificate.ts`, ECDSA P-256, 825 days). The authority's name constraints allow only `localhost`, `127.0.0.1` and `::1`, and its private key exists only in memory while the server certificate is signed: it is never written anywhere, so nobody can issue another certificate with it.
+2. Adds the authority to the user's trusted roots with `certutil -user -addstore Root`; Windows shows a security warning that the user confirms. If the user declines, nothing else changes.
+3. Writes the server's certificate and key (`0600`) to `%LOCALAPPDATA%\writehand\outlook\`, inside the private data folder, and records the authority's thumbprint and expiry date in `config.json`. A previous authority (from an earlier `enable`) is removed; Windows asks again.
+4. Copies the program to `writehand-outlook.exe` with its PE subsystem set to GUI, so the server runs without a console window (`src/windowless-program.ts`; a development install copies Node.js instead and runs its script), and adds `"…\writehand-outlook.exe" "outlook" "serve"` as the value `Writehand Outlook` under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
+5. Writes `outlook-manifest.xml` next to the program, starts the server and prints how to add the manifest in Outlook ([Outlook add-in → Install](./OUTLOOK_ADDIN.md#install)).
+
+**The server** (`writehand outlook serve`, `src/outlook-server.ts`) listens on `127.0.0.1:41537` with TLS 1.2 or later. It serves only the files the program carries, and answers the pane's requests at `POST /api/host` with the same dispatcher as native messaging (`src/host-dispatch.ts`), limited to `AI_STATUS`, `AI_COMMAND`, `AI_GENERATE`, `AI_CANCEL` and `HOST_INFO` (`OUTLOOK_BRIDGE_REQUESTS`): updates stay with the extension and `writehand update`. Who may do what:
+
+- Every request must name the server in `Host` (`localhost:41537` or `127.0.0.1:41537`), which also defeats DNS rebinding; the certificate is valid for nothing else.
+- A pane request must come from the pane's own origin (`Origin: https://localhost:41537`, set by the browser) and carry the token the server wrote into the pane's page (`<meta name="writehand-bridge">`), which no other site can read. The token is kept in `bridge.token` across restarts, so an open pane keeps working after an update.
+- The pane's page may be framed only by Outlook (`frame-ancestors`); pages and answers are not cached (`no-store`), other files are revalidated (`no-cache`).
+- `/control/status`, `/control/stop` and `/control/restart` need the control token from `server.json` in the private data folder and must not come from a browser (no `Origin`): only `writehand` commands of the same user use them.
+- Nothing about a request's content is logged; the server has no console.
+
+**Updates and removal.** `install` (and so every update) keeps the server on: it refreshes the windowless copy and the sign-in entry, and asks the running server to restart, which starts the newly installed program itself and exits, so it keeps running even when a browser started the update. If the port is taken, a starting server waits about ten seconds and then exits. `uninstall` runs `outlook disable` first. A server whose certificate expired keeps running, but Outlook no longer loads the pane: `outlook status` says so, and `outlook enable` renews it.
+
+Outlook for Mac and Linux are not supported yet: `outlook enable` says that the server is available on Windows only.
 
 ## Updates
 
@@ -258,6 +291,9 @@ The prompt is built by `buildTaskPrompt` (`packages/contracts/src/ai-prompt.ts`)
 | `AI_CLAUDE_UNSUPPORTED_INSTALL` | Claude Code was found only as a `claude.cmd` script that cannot be started without a shell. Install it with Anthropic's native installer (`irm https://claude.ai/install.ps1 \| iex`), WinGet or npm, run the helper app's install command again and **Refresh** |
 | `AI_CLAUDE_NOT_LOGGED_IN` | Run `claude`, then `/login`. With several Claude configurations (`CLAUDE_CONFIG_DIR`), run the install command in a terminal where the right one is active |
 | Warning that Claude Code is signed in another way (for example with an API key) | Claude Code is using that account instead of the plan, and usage is billed there |
+| `outlook enable` says the certificate was not added | Windows' security warning was declined or closed. Run the command again and select **Yes** |
+| The Outlook add-in does not load, or says the helper app did not answer | `writehand outlook status`: if the server does not answer, sign out of Windows and in again or run `writehand outlook enable`; if the certificate expired, run `writehand outlook enable`. Another program on port 41537 also stops it |
+| The Outlook add-in still shows an old version | Close and reopen the pane; after an update the server restarts on its own (`outlook status` shows its version) |
 
 Uninstall with the command from the setup wizard or the helper app card, or `writehand uninstall`. It removes every browser registration (on Windows including the HKCU keys) and the program. `--delete-data` (`-DeleteData`) also tries to revoke ChatGPT sessions and deletes `~/.config/writehand` (`%LOCALAPPDATA%\writehand`).
 
