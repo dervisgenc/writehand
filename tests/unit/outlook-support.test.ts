@@ -11,6 +11,7 @@ import {
 } from '../../apps/ai-companion/src/host-config';
 import {
   addinFiles,
+  bridgeToken,
   commandLine,
   disableOutlook,
   enableOutlook,
@@ -270,5 +271,21 @@ describe('writehand outlook', () => {
     const { context, io } = await setup();
     const platform = { ...context.platform, outlook: null };
     await expect(enableOutlook({ ...context, platform }, io)).rejects.toThrow('Windows only');
+  });
+});
+
+describe("the pane's bridge token", () => {
+  it('is created once and kept across server restarts, and replaced only when it is unusable', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'writehand-token-'));
+    temporary.push(directory);
+    const first = await bridgeToken(directory);
+    expect(first).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(await bridgeToken(directory)).toBe(first);
+    if (process.platform !== 'win32')
+      expect((await stat(join(directory, 'bridge.token'))).mode & 0o777).toBe(0o600);
+    await writeFile(join(directory, 'bridge.token'), 'short');
+    const replaced = await bridgeToken(directory);
+    expect(replaced).not.toBe(first);
+    expect(replaced).toMatch(/^[A-Za-z0-9_-]{43}$/);
   });
 });

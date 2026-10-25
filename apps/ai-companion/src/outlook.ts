@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { request } from 'node:https';
+import { join } from 'node:path';
 import { userInfo } from 'node:os';
 import {
   OUTLOOK_ADDIN_ORIGIN,
@@ -74,7 +75,21 @@ const FILES = {
   certificate: 'server.crt',
   key: 'server.key',
   state: 'server.json',
+  bridgeToken: 'bridge.token',
 } as const;
+
+/**
+ * The token the server writes into the pane's page. It is kept across restarts, so a pane that
+ * stays open while the server is updated or restarted keeps working; `disable` deletes it.
+ */
+export async function bridgeToken(directory: string): Promise<string> {
+  const path = join(directory, FILES.bridgeToken);
+  const stored = (await readFile(path, 'utf8').catch(() => '')).trim();
+  if (/^[A-Za-z0-9_-]{43}$/.test(stored)) return stored;
+  const token = randomBytes(32).toString('base64url');
+  await writeFile(path, token, { mode: 0o600 });
+  return token;
+}
 
 const stateSchema = z.object({
   pid: z.number().int(),
@@ -401,7 +416,7 @@ export async function serveOutlook(context: OutlookContext, io: OutlookIo): Prom
     port: OUTLOOK_ADDIN_PORT,
     files: context.files,
     dispatch: (raw: unknown) => dispatcher.dispatch(raw),
-    token: randomBytes(32).toString('base64url'),
+    token: await bridgeToken(outlookOf(context.platform).directory),
     controlToken: state.controlToken,
     cert,
     key,
