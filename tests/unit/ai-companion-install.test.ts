@@ -223,6 +223,41 @@ describe('Installation plan', () => {
       registry.remove('HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\other.host'),
     ).rejects.toThrow('Not a registry key of this helper');
   });
+
+  it('writes only its own value in the sign-in key, for the Outlook add-in server', async () => {
+    const registry = windows().registry!;
+    const run = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
+    await expect(registry.setValue(run, 'OneDrive', 'x')).rejects.toThrow(
+      'Not a registry value of this helper',
+    );
+    await expect(registry.removeValue(run, 'OneDrive')).rejects.toThrow(
+      'Not a registry value of this helper',
+    );
+    await expect(
+      registry.setValue(
+        'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce',
+        'Writehand Outlook',
+        'x',
+      ),
+    ).rejects.toThrow('Not a registry value of this helper');
+    expect(windows().outlook).toEqual({
+      windowlessProgramPath: 'C:\\Users\\Ada\\AppData\\Local\\Programs\\writehand\\writehand-outlook.exe',
+      directory: 'C:\\Users\\Ada\\AppData\\Local\\writehand\\outlook',
+      manifestPath: 'C:\\Users\\Ada\\AppData\\Local\\Programs\\writehand\\outlook-manifest.xml',
+      autostart: { key: run, name: 'Writehand Outlook' },
+      trustAuthority: expect.any(Function),
+      untrustAuthority: expect.any(Function),
+    });
+    expect(windows().outlook!.trustAuthority('C:\\ca.crt')).toEqual({
+      file: 'C:\\Windows\\System32\\certutil.exe',
+      args: ['-user', '-addstore', 'Root', 'C:\\ca.crt'],
+    });
+    expect(windows().outlook!.untrustAuthority('AB12')).toEqual({
+      file: 'C:\\Windows\\System32\\certutil.exe',
+      args: ['-user', '-delstore', 'Root', 'AB12'],
+    });
+    expect(hostPlatform('linux', {}, '/home/ada').outlook).toBe(null);
+  });
 });
 
 describe('Command line', () => {
@@ -440,8 +475,8 @@ describe('On this computer', () => {
       await writeFile(script, REPORTING_SCRIPT);
       const platform = hostPlatform(process.platform, { PATH: '' }, join(root, 'home'));
       const source = { script, node: process.execPath };
-      await install(platform, { extensionIds: [CHROMIUM_ID], development: true, source });
-      await install(platform, { extensionIds: [], development: true, source });
+      await install(platform, { extensionIds: [CHROMIUM_ID], development: true, source, addin: new Map() });
+      await install(platform, { extensionIds: [], development: true, source, addin: new Map() });
 
       const chrome = JSON.parse(await readFile(platform.registration('chrome').manifest, 'utf8'));
       expect(chrome).toMatchObject({
@@ -449,9 +484,9 @@ describe('On this computer', () => {
         allowed_origins: [`chrome-extension://${CHROMIUM_ID}/`],
       });
       expect(parseHostConfig(await readFile(platform.configPath, 'utf8')).development).toBe(true);
-      await expect(install(platform, { extensionIds: [], development: false, source })).rejects.toThrow(
-        '--dev',
-      );
+      await expect(
+        install(platform, { extensionIds: [], development: false, source, addin: new Map() }),
+      ).rejects.toThrow('--dev');
 
       await uninstall(platform, { deleteData: false, runningProgram: null });
       expect(await exists(platform.installDirectory)).toBe(false);

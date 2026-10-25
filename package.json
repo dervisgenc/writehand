@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "pnpm --filter @writehand/browser-extension dev",
     "dev:firefox": "pnpm --filter @writehand/browser-extension dev:firefox",
-    "build": "pnpm --filter @writehand/ai-companion build && pnpm --filter @writehand/browser-extension build:all && pnpm --filter @writehand/outlook-addin-app build",
+    "build": "pnpm --filter @writehand/outlook-addin-app build && pnpm --filter @writehand/ai-companion build && pnpm --filter @writehand/browser-extension build:all",
     "ai:build": "pnpm --filter @writehand/ai-companion build",
     "ai:sea": "pnpm --filter @writehand/ai-companion build:sea",
     "ai:install": "pnpm --filter @writehand/ai-companion install-host",

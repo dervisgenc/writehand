@@ -20,6 +20,8 @@ import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import postject from 'postject';
 
+import { ADDIN_THIRD_PARTY, addinFilesPlugin } from './addin-files.mjs';
+
 const NODE_MAJOR = 24;
 // Node.js looks for this marker to find the injected application.
 const SEA_FUSE = 'NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2';
@@ -58,6 +60,8 @@ const { metafile } = await build({
   legalComments: 'none',
   metafile: true,
   logLevel: 'warning',
+  // The release program carries the Outlook add-in's task pane (`writehand outlook`).
+  plugins: [addinFilesPlugin({ required: true })],
 });
 
 // 2. The application blob, injected into a copy of this Node.js binary.
@@ -88,6 +92,8 @@ for (const input of Object.keys(metafile.inputs)) {
   const match = /^(.*node_modules\/(?:@[^/]+\/)?[^/]+)\//.exec(input);
   if (match) packages.set(resolve(root, match[1]), true);
 }
+// The Outlook add-in's task pane inside the program bundles its own packages (Vue and others).
+for (const directory of JSON.parse(readFileSync(ADDIN_THIRD_PARTY, 'utf8'))) packages.set(directory, true);
 const licenseOf = (directory) =>
   readdirSync(directory).find((name) => /^(licen[cs]e|copying)(\.(md|txt))?$/i.test(name));
 const notices = [...packages.keys()].sort().map((directory) => {

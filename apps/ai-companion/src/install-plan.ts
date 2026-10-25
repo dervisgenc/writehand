@@ -4,6 +4,7 @@ import {
   HELPER_COMMAND,
   HOST_BROWSERS,
   NATIVE_HOST_NAME,
+  OUTLOOK_ADDIN_PORT,
   PRODUCT_NAME,
   type HostBrowser,
 } from '@writehand/contracts';
@@ -19,7 +20,11 @@ export type CliCommand =
   | { readonly kind: 'install'; readonly extensionIds: readonly string[]; readonly development: boolean }
   | { readonly kind: 'uninstall'; readonly deleteData: boolean }
   | { readonly kind: 'status' }
-  | { readonly kind: 'update'; readonly checkOnly: boolean };
+  | { readonly kind: 'update'; readonly checkOnly: boolean }
+  | { readonly kind: 'outlook'; readonly action: OutlookAction };
+
+export const OUTLOOK_ACTIONS = ['enable', 'disable', 'status', 'serve'] as const;
+export type OutlookAction = (typeof OUTLOOK_ACTIONS)[number];
 
 export const USAGE = `Usage: ${HELPER_COMMAND} <command>
 
@@ -36,6 +41,12 @@ Commands:
   update [--check]
       Install the latest release if it is newer, after verifying its signature and
       checksum. --check only reports whether a newer release exists.
+  outlook enable | disable | status
+      Windows: serve the Outlook add-in on this computer (https://localhost:${OUTLOOK_ADDIN_PORT}) so
+      the new and classic Outlook can use the ChatGPT and Claude plans. enable asks Windows to
+      trust a certificate valid only for this computer's local addresses, starts the server now
+      and at sign-in, and writes the manifest to add in Outlook. disable removes all of it.
+      (outlook serve is the server itself, which Windows starts at sign-in.)
   version
       Print the version.
 
@@ -44,6 +55,7 @@ Browsers start the program without a command; it then serves the ${PRODUCT_NAME}
 
 const COMMANDS = new Set([
   'install',
+  'outlook',
   'uninstall',
   'status',
   'update',
@@ -88,6 +100,14 @@ export function parseCommand(argv: readonly string[], interactive: boolean): Cli
     case 'update':
       accept(['--check']);
       return { kind: 'update', checkOnly: args.includes('--check') };
+    case 'outlook': {
+      const [action, ...rest] = args;
+      if (!OUTLOOK_ACTIONS.includes(action as OutlookAction) || rest.length > 0)
+        throw new Error(`Usage: ${HELPER_COMMAND} outlook enable | disable | status
+
+${USAGE}`);
+      return { kind: 'outlook', action: action as OutlookAction };
+    }
     case 'version':
     case '--version':
       accept([]);

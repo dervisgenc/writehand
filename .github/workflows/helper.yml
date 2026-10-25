@@ -34,6 +34,10 @@ jobs:
           node-version: 24
       - run: pnpm install --frozen-lockfile
 
+      # The helper app carries the Outlook add-in's task pane and serves it (`writehand outlook`).
+      - name: Build the Outlook add-in's task pane
+        run: pnpm addin:build
+
       - name: Build the single-file program
         run: pnpm ai:sea
 

@@ -88,6 +88,28 @@ async function replaceFile(source: string, target: string): Promise<void> {
   }
 }
 
+/**
+ * Creates the helper's private data folder if needed, readable only by the user: mode 0700, and
+ * on Windows an ACL for the user and the system (`restrictDirectory`). A folder that could not
+ * be restricted is removed again, so a later attempt starts over.
+ */
+export async function preparePrivateDirectory(
+  directory: string,
+  restrictDirectory: ((directory: string) => Promise<void>) | null,
+): Promise<void> {
+  const created = await mkdir(directory, { recursive: true, mode: 0o700 });
+  if (created !== undefined && restrictDirectory) {
+    try {
+      await restrictDirectory(directory);
+    } catch (error) {
+      // Never keep an unprotected directory: the next attempt creates and restricts it again.
+      await rmdir(directory).catch(() => undefined);
+      throw error;
+    }
+  }
+  await chmod(directory, 0o700);
+}
+
 /** Private runtime storage, atomic replacement and a cross-process lock for rotating refresh tokens. */
 export function createCredentialStore(
   directory: string,
@@ -97,19 +119,7 @@ export function createCredentialStore(
   } = {},
 ): CredentialStore {
   const file = join(directory, 'credentials.json');
-  const prepare = async () => {
-    const created = await mkdir(directory, { recursive: true, mode: 0o700 });
-    if (created !== undefined && options.restrictDirectory) {
-      try {
-        await options.restrictDirectory(directory);
-      } catch (error) {
-        // Never keep an unprotected directory: the next attempt creates and restricts it again.
-        await rmdir(directory).catch(() => undefined);
-        throw error;
-      }
-    }
-    await chmod(directory, 0o700);
-  };
+  const prepare = () => preparePrivateDirectory(directory, options.restrictDirectory ?? null);
   const readState = async (): Promise<CredentialState> => {
     try {
       return fromFile(fileSchema.parse(JSON.parse(await readFile(file, 'utf8'))));

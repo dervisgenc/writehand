@@ -109,6 +109,9 @@ describe('Browser registrations', () => {
         read: async (key: string) => values.get(key) ?? null,
         set: async () => undefined,
         remove: async () => undefined,
+        readValue: async () => null,
+        setValue: async () => undefined,
+        removeValue: async () => undefined,
       },
     };
     // No registry value: the browser never reads the file, so it is not read either.

@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import {
   HELPER_COMMAND,
   NATIVE_HOST_NAME,
+  PRODUCT_NAME,
   type HostBrowser,
   type HostOperatingSystem,
 } from '@writehand/contracts';
@@ -23,12 +24,36 @@ type Environment = Readonly<Record<string, string | undefined>>;
 /** The Claude Code program recorded at installation; the host sets it from its configuration. */
 export const CLAUDE_PATH_VARIABLE = 'WRITEHAND_CLAUDE_PATH';
 
-/** Per-user registry values that point a browser at the host manifest (Windows). */
+/**
+ * Per-user registry values (Windows): the keys that point a browser at the host manifest, and the
+ * value that starts the Outlook add-in server at sign-in. Only this helper's own keys and values
+ * are ever written or removed.
+ */
 export interface Registry {
   /** The key's default value, or null when the key does not exist. */
   read(key: string): Promise<string | null>;
   set(key: string, value: string): Promise<void>;
   remove(key: string): Promise<void>;
+  /** A named value of a key, or null when it does not exist. */
+  readValue(key: string, name: string): Promise<string | null>;
+  setValue(key: string, name: string, value: string): Promise<void>;
+  removeValue(key: string, name: string): Promise<void>;
+}
+
+/** The local Outlook add-in server's place in the system (`writehand outlook`); Windows only so far. */
+export interface OutlookPlatform {
+  /** The copy of the program (Node.js for a development install) that runs without a console window. */
+  readonly windowlessProgramPath: string;
+  /** The server's certificate, key and state, inside the private data folder. */
+  readonly directory: string;
+  /** The manifest the user adds in Outlook. */
+  readonly manifestPath: string;
+  /** The registry value that starts the server at sign-in. */
+  readonly autostart: { readonly key: string; readonly name: string };
+  /** Adds a certificate authority to the user's trusted roots; Windows asks the user to confirm. */
+  trustAuthority(certificatePath: string): Command;
+  /** Removes it again by its SHA-1 thumbprint; Windows asks again. */
+  untrustAuthority(thumbprint: string): Command;
 }
 
 /** A program started without a shell. */
@@ -82,6 +107,7 @@ export interface HostPlatform {
    * where it can be removed at once. The command returns after starting it and is awaited.
    */
   deferredRemoval(directory: string, pid: number): Command | null;
+  readonly outlook: OutlookPlatform | null;
 }
 
 /** Absolute directories of a PATH value; relative entries would depend on the working directory. */
@@ -148,6 +174,7 @@ function unixPlatform(os: 'darwin' | 'linux', arch: string, env: Environment, ho
     registry: null,
     movesRunningProgramAside: false,
     deferredRemoval: () => null,
+    outlook: null,
   };
 }
 
@@ -189,6 +216,11 @@ export function registryDefaultValue(output: string): string | null {
   return /\sREG_SZ\s+(.+?)\s*$/m.exec(output)?.[1] ?? null;
 }
 
+/** The per-user key whose values Windows starts at sign-in. */
+export const WINDOWS_RUN_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
+/** The helper's one value there. */
+export const OUTLOOK_AUTOSTART_VALUE = `${PRODUCT_NAME} Outlook`;
+
 function windowsPlatform(arch: string, env: Environment, home: string): HostPlatform {
   const path = win32;
   // Names are case-insensitive on Windows; a copied environment keeps spellings such as "Path".
@@ -209,6 +241,12 @@ function windowsPlatform(arch: string, env: Environment, home: string): HostPlat
     if (!key.startsWith('HKCU\\Software\\') || !key.endsWith(`\\NativeMessagingHosts\\${NATIVE_HOST_NAME}`))
       throw new Error(`Not a registry key of this helper: ${key}`);
     return key;
+  };
+  // Named values only in Windows' sign-in key, and only the helper's own one.
+  const ownValue = (key: string, name: string) => {
+    if (key !== WINDOWS_RUN_KEY || name !== OUTLOOK_AUTOSTART_VALUE)
+      throw new Error(`Not a registry value of this helper: ${key}\\${name}`);
+    return [key, '/v', name];
   };
   const hidden = { windowsHide: true };
   return {
@@ -290,8 +328,45 @@ function windowsPlatform(arch: string, env: Environment, home: string): HostPlat
         );
         if (exists) await run(system32('reg.exe'), ['delete', key, '/f'], hidden);
       },
+      async readValue(key, name) {
+        const output = await run(system32('reg.exe'), ['query', ...ownValue(key, name)], hidden).then(
+          ({ stdout }) => stdout,
+          () => '',
+        );
+        return registryDefaultValue(output);
+      },
+      async setValue(key, name, value) {
+        await run(
+          system32('reg.exe'),
+          ['add', ...ownValue(key, name), '/t', 'REG_SZ', '/d', value, '/f'],
+          hidden,
+        );
+      },
+      async removeValue(key, name) {
+        const exists = await run(system32('reg.exe'), ['query', ...ownValue(key, name)], hidden).then(
+          () => true,
+          () => false,
+        );
+        if (exists) await run(system32('reg.exe'), ['delete', key, '/v', name, '/f'], hidden);
+      },
     },
     movesRunningProgramAside: true,
+    outlook: {
+      windowlessProgramPath: path.join(installDirectory, `${HELPER_COMMAND}-outlook.exe`),
+      directory: path.join(localAppData, HELPER_COMMAND, 'outlook'),
+      manifestPath: path.join(installDirectory, 'outlook-manifest.xml'),
+      autostart: { key: WINDOWS_RUN_KEY, name: OUTLOOK_AUTOSTART_VALUE },
+      // certutil adds to and removes from the current user's Root store; Windows shows its own
+      // security prompt for each, which the user must confirm.
+      trustAuthority: (certificatePath) => ({
+        file: system32('certutil.exe'),
+        args: ['-user', '-addstore', 'Root', certificatePath],
+      }),
+      untrustAuthority: (thumbprint) => ({
+        file: system32('certutil.exe'),
+        args: ['-user', '-delstore', 'Root', thumbprint],
+      }),
+    },
     deferredRemoval: (directory, pid) => {
       const powershell = system32('WindowsPowerShell\\v1.0\\powershell.exe');
       // Waits for this program to exit, then removes the folder. A program that has just exited,

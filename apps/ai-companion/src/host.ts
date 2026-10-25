@@ -1,105 +1,21 @@
-import { spawn } from 'node:child_process';
-import { createClaudeCodeProvider, findClaudeBinary } from '@writehand/ai-claude-code';
-import { createOpenAiOAuth, createOpenAiProvider, failureCode } from '@writehand/ai-openai';
-import { hostRequestSchema, PROTOCOL_VERSION } from '@writehand/contracts';
-
-import { createAiService } from './ai-service';
-import { createCredentialStore } from './credential-store';
+import { createHelperService, createHostDispatcher } from './host-dispatch';
 import type { HostConfig } from './host-config';
-import { commandPath } from './install-plan';
-import { encodeNativeMessage, NativeMessageDecoder, rejectionFor } from './native-protocol';
+import { encodeNativeMessage, NativeMessageDecoder } from './native-protocol';
 import type { HostPlatform } from './platform';
-import { registeredBrowsers } from './registrations';
-import { createUpdater } from './update';
-import { HOST_VERSION } from './version';
 
 /** The browser's native messaging host: framed requests on stdin, framed responses on stdout. */
 export function runHost(platform: HostPlatform, config: HostConfig): void {
   // Native hosts write ONLY framed protocol messages to stdout, never logs or email content.
-  const service = createAiService({
-    store: createCredentialStore(platform.dataDirectory, {
-      restrictDirectory: platform.restrictDirectory,
-    }),
-    oauth: createOpenAiOAuth(),
-    provider: createOpenAiProvider(),
-    claude: createClaudeCodeProvider({
-      env: process.env,
-      findBinary: () => findClaudeBinary(platform.claudeLocations),
-    }),
-    openBrowser: (url) =>
-      new Promise<void>((resolve, reject) => {
-        // Only the HTTPS sign-in page is opened: the system opener would also start local files.
-        if (new URL(url).protocol !== 'https:') {
-          reject(new Error('Browser could not open.'));
-          return;
-        }
-        const opener = platform.urlOpener(url);
-        const child = spawn(opener.file, opener.args, { stdio: 'ignore' });
-        child.once('error', () => reject(new Error('Browser could not open.')));
-        child.once('exit', (code) => (code === 0 ? resolve() : reject(new Error('Browser could not open.'))));
-      }),
-  });
+  const dispatcher = createHostDispatcher({ platform, config, service: createHelperService(platform) });
 
-  const updater = createUpdater({ platform, config });
-
-  let inFlight = 0;
   async function handle(raw: unknown): Promise<void> {
-    const parsed = hostRequestSchema.safeParse(raw);
-    if (!parsed.success) {
-      const rejection = rejectionFor(raw, PROTOCOL_VERSION);
-      if (rejection !== null) process.stdout.write(encodeNativeMessage(rejection));
+    const result = await dispatcher.dispatch(raw);
+    if (result === null) return;
+    if (result.exitAfterAnswer) {
+      process.stdout.write(encodeNativeMessage(result.response), shutdown);
       return;
     }
-    const request = parsed.data;
-    const base = { protocolVersion: PROTOCOL_VERSION, requestId: request.requestId };
-    if (inFlight >= 32) {
-      process.stdout.write(encodeNativeMessage({ ...base, ok: false, error: { code: 'AI_BUSY' } }));
-      return;
-    }
-    inFlight++;
-    try {
-      let payload: unknown;
-      switch (request.type) {
-        case 'AI_STATUS':
-          payload = await service.status();
-          break;
-        case 'AI_COMMAND':
-          payload = await service.command(request.payload);
-          break;
-        case 'AI_GENERATE':
-          payload = await service.generate(request.payload.generationId, request.payload.input);
-          break;
-        case 'AI_CANCEL':
-          payload = service.cancel(request.payload.generationId);
-          break;
-        case 'HOST_UPDATE_CHECK':
-          payload = await updater.check();
-          break;
-        case 'HOST_UPDATE': {
-          const result = await updater.update('ignore');
-          payload = result;
-          // The browser's next request starts the new program; this one exits once it has answered.
-          if (result.version !== HOST_VERSION) {
-            process.stdout.write(encodeNativeMessage({ ...base, ok: true, payload }), shutdown);
-            return;
-          }
-          break;
-        }
-        case 'HOST_INFO':
-          payload = {
-            version: HOST_VERSION,
-            ...platform.target,
-            browsers: await registeredBrowsers(platform, commandPath(platform, config.development)),
-            development: config.development,
-          };
-          break;
-      }
-      process.stdout.write(encodeNativeMessage({ ...base, ok: true, payload }));
-    } catch (caught) {
-      process.stdout.write(encodeNativeMessage({ ...base, ok: false, error: { code: failureCode(caught) } }));
-    } finally {
-      inFlight--;
-    }
+    process.stdout.write(encodeNativeMessage(result.response));
   }
 
   const decoder = new NativeMessageDecoder();
@@ -107,7 +23,7 @@ export function runHost(platform: HostPlatform, config: HostConfig): void {
     void handle(message);
   });
   const shutdown = () => {
-    service.dispose();
+    dispatcher.dispose();
     process.exit(0);
   };
   decoder.on('error', shutdown);
