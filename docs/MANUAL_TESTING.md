@@ -194,7 +194,7 @@ The add-in's automated tests run against an in-memory Office.js ([Outlook add-in
 
 **Setup.** Use a Microsoft 365 work or school mailbox. Two ways to serve the pane are useful:
 
-- **The helper app** (what users get): install the helper app built with the pane inside (`pnpm addin:build && pnpm ai:sea`, then `writehand.exe install`), run `writehand outlook enable` and add `outlook-manifest.xml` as described in [Outlook add-in → Install](./OUTLOOK_ADDIN.md#install). Use it for the plans and the helper app checks below.
+- **The helper app** (what users get): install the helper app built with the pane inside and turn on its server in one go, as described in [Outlook add-in → Install](./OUTLOOK_ADDIN.md#install). Before a release, put the program in a local folder as a release would (`writehand-windows-x64.zip` from `pnpm addin:build && pnpm ai:sea`, its `SHA256SUMS` line, `install.ps1` and `install-outlook.ps1`), set `$env:WRITEHAND_DOWNLOAD_BASE` to that folder and run `Get-Content -Raw <folder>\install-outlook.ps1 | Invoke-Expression`. Use it for the plans and the helper app checks below.
 - **The sample build** on `https://localhost:3000` (`pnpm addin:certs`, `pnpm addin:build:sample`, `pnpm addin:serve`, then **Add from File** with `apps/outlook-addin/dist-local/manifest.xml`): the three API key providers are replaced with local stand-ins; any key of ten or more characters connects, every result is a labeled sample of its input (for example "… (revised sample)"), and nothing leaves the computer. Use it to check what Outlook does without an AI account.
 
 Both manifests carry the same add-in ID: remove one in **Custom Addins** before adding the other.
@@ -203,7 +203,9 @@ Both manifests carry the same add-in ID: remove one in **Custom Addins** before 
 
 **Checklist** (per client):
 
-- [ ] **Install:** **Add from File** accepts `manifest.xml`; after restarting Outlook, **Writehand** is under **Apps** in a new message and on a received message.
+- [ ] **Install:** **Add from File** accepts `manifest.xml`; after restarting Outlook, **Writehand** is under **Apps** on a received message (a button) and in a new message (a menu with **Revise**, **Translate**, **Write** and **Open Writehand**).
+- [ ] **One-command install:** with the server off, `install-outlook.ps1` installs the helper app, shows Windows' certificate warning once, starts the server, opens <https://aka.ms/olksideload> in the default browser and leaves the manifest's path on the clipboard; pasting it into **Add from File** works. Run it again: no warning, no browser, "on already". Declining the warning leaves the helper app installed and says to run the command again.
+- [ ] **Menu commands:** in a draft, select made-up words and choose **Writehand → Revise**: the pane opens and shows the revised selection without another click; nothing is written before **Apply to draft**. **Translate** opens the pane on the selection and waits for the language; **Write** in an empty new message waits for the instruction, in a reply draft it is a reply. With the pane already open, choose another command and note whether Outlook reloads the pane with it.
 - [ ] **First run:** the pane loads without a certificate or Content Security Policy error. Connect a key: "… key saved, encrypted in this Outlook app.", the status is **Ready** and the key field is cleared. **Revise the sample** works; **Start** opens the panel, which says which key it uses.
 - [ ] **Key after restart:** close and reopen Outlook; the panel still uses the key.
 - [ ] **New message:** the target is the open draft (not a reply) and the operations are **Write**, **Revise** and **Translate**.
@@ -261,3 +263,5 @@ Verified in this client:
 - **Sent Items** held no test item afterwards; the test draft was discarded.
 
 Not checked in this run: a ChatGPT sign-in started from the pane, an API key from the pane, signing out of Windows and in again (the sign-in command was started by hand instead), `writehand outlook disable` and `uninstall` with the server on, classic Outlook, and an install on a clean machine.
+
+**Later on 2026-10-25, the one-command install's update path.** On the same computer, with the server already on: `install-outlook.ps1` from a local release folder (Windows PowerShell 5.1, `WRITEHAND_DOWNLOAD_BASE`) checked the checksum, installed the new build, restarted the server with it and said the server was on already, without a certificate warning or a browser window, in about four seconds. The restarted server served `taskpane.html?command=revise` with its token over the trusted certificate. Not checked yet: the first run of that command (warning, browser, clipboard) and the draft's **Writehand** menu in Outlook, which needs the new manifest added again.

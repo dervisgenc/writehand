@@ -61,7 +61,7 @@ The draft must contain these files:
 | `writehand-<version>-firefox.zip` | Firefox Add-ons package |
 | `writehand-<version>-chromium.zip` | Chrome Web Store and Edge Add-ons package |
 | `writehand-<version>-source.zip` | Source archive of the tagged commit (for AMO review) |
-| `install.sh`, `install.ps1` | Install scripts |
+| `install.sh`, `install.ps1`, `install-outlook.ps1` | Install scripts (the last one: Windows, with the Outlook add-in server) |
 | `SHA256SUMS`, `SHA256SUMS.sig` | Checksums of every file and their Ed25519 signature (base64) |
 
 Draft assets are not public, so download them with the GitHub CLI into a folder outside the repository and run the checks from the repository root:
@@ -96,6 +96,8 @@ WRITEHAND_DOWNLOAD_BASE="file://$draft" sh "$draft/install.sh"
 $draft = "$HOME\writehand-v0.2.0"
 $env:WRITEHAND_DOWNLOAD_BASE = $draft
 Get-Content -Raw "$draft\install.ps1" | Invoke-Expression
+# or with the Outlook add-in server (Windows asks to trust its certificate):
+Get-Content -Raw "$draft\install-outlook.ps1" | Invoke-Expression
 ```
 
 Add `--extension-id=ID` (or `$env:WRITEHAND_EXTENSION_ID`) when testing with a Chromium build whose ID is not yet in `CHROMIUM_EXTENSION_IDS`. In the extension's settings, the helper app card must show **Connected** with the new version. Remove it again with `sh "$draft/install.sh" uninstall` (or the PowerShell uninstall command). For a full pass on clean machines, follow [Manual testing](./MANUAL_TESTING.md).

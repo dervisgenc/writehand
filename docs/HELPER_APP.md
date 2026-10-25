@@ -40,6 +40,14 @@ The script detects the system and processor (on Apple silicon it installs the na
 
 For a Chromium extension whose ID is not yet built into the helper app (an unpacked build, or a store build before its ID is added), the wizard appends the ID: `… | sh -s -- --extension-id=ID`, or `$env:WRITEHAND_EXTENSION_ID='ID'; irm … | iex` in PowerShell.
 
+For the Outlook applications on Windows, one command installs the helper app and turns on its [Outlook add-in server](#outlook-add-in-server-windows):
+
+```powershell
+irm https://github.com/dervisgenc/writehand/releases/latest/download/install-outlook.ps1 | iex
+```
+
+`install-outlook.ps1` fetches `install.ps1` from the same release and runs it with `-Outlook`, which passes `--outlook` to the program's `install` command: the same checked installation, then `outlook enable` unless the server is on already. Browser users' command is unchanged.
+
 Uninstall (add `--delete-data`, or `-DeleteData` in PowerShell, to also sign out of ChatGPT and delete saved credentials):
 
 ```sh
@@ -59,7 +67,7 @@ The installed program is `~/.local/share/writehand/writehand` on macOS and Linux
 | Command | What it does |
 | --- | --- |
 | _(none, or the browser's arguments)_ | Runs as the native messaging host. In a terminal without a command it prints help |
-| `install [--extension-id=ID]... [--dev]` | Copies the running program into the install folder, registers it with Firefox, Chrome, Edge and Brave and writes `config.json`. Firefox uses the built-in ID; Chromium browsers are registered once an ID is known (store IDs or `--extension-id`). IDs from earlier registrations are kept |
+| `install [--extension-id=ID]... [--dev] [--outlook]` | Copies the running program into the install folder, registers it with Firefox, Chrome, Edge and Brave and writes `config.json`. Firefox uses the built-in ID; Chromium browsers are registered once an ID is known (store IDs or `--extension-id`). IDs from earlier registrations are kept. `--outlook` (Windows) then turns on the Outlook add-in server as `outlook enable` does, unless it is on already |
 | `uninstall [--delete-data]` | Removes every browser registration and the program. `--delete-data` also tries to revoke ChatGPT sessions and deletes the credentials folder; without it, credentials stay in place |
 | `status` | Version, system, registered browsers and whether Claude Code is ready. Never prints account or token details |
 | `update [--check]` | Installs a newer release after verifying its signature and checksum; `--check` only reports whether one exists |
@@ -136,7 +144,7 @@ writehand outlook disable   # stop it and remove the certificate, the sign-in en
 2. Adds the authority to the user's trusted roots with `certutil -user -addstore Root`; Windows shows a security warning that the user confirms. If the user declines, nothing else changes.
 3. Writes the server's certificate and key (`0600`) to `%LOCALAPPDATA%\writehand\outlook\`, inside the private data folder, and records the authority's thumbprint and expiry date in `config.json`. A previous authority (from an earlier `enable`) is removed; Windows asks again.
 4. Copies the program to `writehand-outlook.exe` with its PE subsystem set to GUI, so the server runs without a console window (`src/windowless-program.ts`; a development install copies Node.js instead and runs its script), and adds `"…\writehand-outlook.exe" "outlook" "serve"` as the value `Writehand Outlook` under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
-5. Writes `outlook-manifest.xml` next to the program, starts the server and prints how to add the manifest in Outlook ([Outlook add-in → Install](./OUTLOOK_ADDIN.md#install)).
+5. Writes `outlook-manifest.xml` next to the program, starts the server and prints how to add the manifest in Outlook ([Outlook add-in → Install](./OUTLOOK_ADDIN.md#install)). The first time (not when renewing the certificate), it also puts the manifest's path on the clipboard (`Set-Clipboard`, the path passed in an environment variable) and opens <https://aka.ms/olksideload> in the default browser, so the user only pastes the path into Outlook's file dialog.
 
 **The server** (`writehand outlook serve`, `src/outlook-server.ts`) listens on `127.0.0.1:41537` with TLS 1.2 or later. It serves only the files the program carries, and answers the pane's requests at `POST /api/host` with the same dispatcher as native messaging (`src/host-dispatch.ts`), limited to `AI_STATUS`, `AI_COMMAND`, `AI_GENERATE`, `AI_CANCEL` and `HOST_INFO` (`OUTLOOK_BRIDGE_REQUESTS`): updates stay with the extension and `writehand update`. Who may do what:
 
@@ -291,7 +299,7 @@ The prompt is built by `buildTaskPrompt` (`packages/contracts/src/ai-prompt.ts`)
 | `AI_CLAUDE_UNSUPPORTED_INSTALL` | Claude Code was found only as a `claude.cmd` script that cannot be started without a shell. Install it with Anthropic's native installer (`irm https://claude.ai/install.ps1 \| iex`), WinGet or npm, run the helper app's install command again and **Refresh** |
 | `AI_CLAUDE_NOT_LOGGED_IN` | Run `claude`, then `/login`. With several Claude configurations (`CLAUDE_CONFIG_DIR`), run the install command in a terminal where the right one is active |
 | Warning that Claude Code is signed in another way (for example with an API key) | Claude Code is using that account instead of the plan, and usage is billed there |
-| `outlook enable` says the certificate was not added | Windows' security warning was declined or closed. Run the command again and select **Yes** |
+| `outlook enable` (or the Outlook install command) says the certificate was not added | Windows' security warning was declined or closed. Run the command again and select **Yes**; the helper app itself is installed either way |
 | The Outlook add-in does not load, or says the helper app did not answer | `writehand outlook status`: if the server does not answer, sign out of Windows and in again or run `writehand outlook enable`; if the certificate expired, run `writehand outlook enable`. Another program on port 41537 also stops it |
 | The Outlook add-in still shows an old version | Close and reopen the pane; after an update the server restarts on its own (`outlook status` shows its version) |
 

@@ -85,7 +85,7 @@ Read the full [privacy policy](./PRIVACY.md). To report a security issue private
 
 Writehand is in its first public release. Store listings for Firefox Add-ons and Microsoft Edge Add-ons are on their way, followed by the Chrome Web Store. See the [changelog](./CHANGELOG.md) for what is included.
 
-An add-in for the Outlook applications (the new Outlook and classic Outlook for Windows first) is in development; browser extensions do not run inside them. The helper app serves it on your computer (`writehand outlook enable`), so it works with the ChatGPT and Claude plans as well as an API key. It is not released yet; so far it has been checked in the new Outlook for Windows. See [Outlook add-in](./docs/OUTLOOK_ADDIN.md).
+An add-in for the Outlook applications (the new Outlook and classic Outlook for Windows first) is in development; browser extensions do not run inside them. The helper app serves it on your computer, so it works with the ChatGPT and Claude plans as well as an API key; one PowerShell command (`install-outlook.ps1`) installs both, and the add-in is then added once in Outlook on the web. It is not released yet; so far it has been checked in the new Outlook for Windows. See [Outlook add-in](./docs/OUTLOOK_ADDIN.md).
 
 ## Development
 

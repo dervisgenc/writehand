@@ -1,6 +1,6 @@
 # Outlook add-in
 
-**Status: in development, not released (2026-10-25).** Writehand for the Outlook applications as an Office Add-in (Office.js), Windows first, built on the `feat/outlook-addin` branch. The helper app serves the add-in on the user's computer (`writehand outlook enable`), so the add-in works with the ChatGPT plan, the Claude plan and API keys. It has been checked in one real client: the new Outlook for Windows, with the ChatGPT and Claude plans through the helper app (2026-10-25) and with the sample build (2026-10-23). Classic Outlook for Windows, Outlook on the web and Outlook for Mac have not been checked in a real client, nor has an API key provider called from the task pane.
+**Status: in development, not released (2026-10-25).** Writehand for the Outlook applications as an Office Add-in (Office.js), Windows first, built on the `feat/outlook-addin` branch. The helper app serves the add-in on the user's computer (`writehand outlook enable`), so the add-in works with the ChatGPT plan, the Claude plan and API keys. It has been checked in one real client: the new Outlook for Windows, with the ChatGPT and Claude plans through the helper app (2026-10-25) and with the sample build (2026-10-23). Classic Outlook for Windows, Outlook on the web and Outlook for Mac have not been checked in a real client, nor has an API key provider called from the task pane. The draft's **Writehand** menu and the first run of the one-command install (`install-outlook.ps1`) are new and not yet checked in a real client; the install's update path is.
 
 This guide describes what the add-in does, how to install it, how it works and how to develop and test it. Platform facts were checked on learn.microsoft.com or the vendor's own documentation on 2026-10-22 to 2026-10-25 and link their source; what was seen in a real client is marked as such and recorded in [Manual testing](./MANUAL_TESTING.md#7-outlook-add-in). Facts that neither the documentation nor a real client confirms are marked **unconfirmed**.
 
@@ -9,7 +9,7 @@ See also: [Helper app → Outlook add-in server](./HELPER_APP.md#outlook-add-in-
 ## What it does
 
 - Browser extensions do not run inside the Outlook applications, so the add-in is a web page (the task pane) that Outlook loads over HTTPS and that works with the open item through Office.js. The helper app serves that page on `https://localhost:41537`; there is no Writehand web server.
-- A **Writehand** command (under **Apps** in the new Outlook) opens the task pane on a received email or a draft. The pane holds the same panel as the extension: revise, translate, write or reply, refine the result, preview it, then apply it to the draft once or copy it. There are no buttons inside the email or the draft.
+- On a received email, the **Writehand** button (under **Apps** in the new Outlook) opens the task pane, ready to draft a reply. On a draft, **Writehand** is a menu: **Revise**, **Translate** and **Write** open the pane and start that operation on the selected text or the draft, and **Open Writehand** opens it as it is. The pane holds the same panel as the extension: revise, translate, write or reply, refine the result, preview it, then apply it to the draft once or copy it. There are no buttons inside the email or the draft.
 - In a draft it revises or translates the selected text, writes into an empty draft, or replaces the whole body of a new message without a signature or quote. On a received email it opens a new reply draft with the result.
 - Context is the open item: the email you read, or the earlier mail quoted in your reply. You see and can edit it before anything is sent.
 - It generates with the **ChatGPT plan** or the **Claude plan** through the helper app on the same computer, the way the extension does, or with your own **API key** from Groq, OpenRouter or OpenAI.
@@ -20,8 +20,8 @@ See also: [Helper app → Outlook add-in server](./HELPER_APP.md#outlook-add-in-
 | Area | Browser extension | Outlook add-in |
 | --- | --- | --- |
 | Where it runs | Outlook on the web in Firefox, Chrome, Edge and Brave; Gmail | The Outlook applications on Windows: the new Outlook (checked) and classic Outlook (unchecked) |
-| How it opens | Toolbar inside each draft, result card next to the draft, **Draft reply** button in the reading pane, side panel | The **Writehand** command opens the task pane; everything happens in the pane. An add-in cannot place UI inside the draft. The pane can be pinned on Microsoft 365 accounts |
-| Quick actions | One click in the draft revises or translates the selection | Open the pane, then choose the operation |
+| How it opens | Toolbar inside each draft, result card next to the draft, **Draft reply** button in the reading pane, side panel | The **Writehand** button on a received email, the **Writehand** menu on a draft (ribbon, or **Apps** in the new Outlook); everything else happens in the task pane. An add-in cannot place UI inside the draft; the context menu extension point is documented for Word, Excel, PowerPoint and OneNote only, and keyboard shortcuts for add-in commands are not documented for Outlook. The pane can be pinned on Microsoft 365 accounts |
+| Quick actions | One click in the draft revises or translates the selection | **Writehand → Revise** revises the selection (or the draft) in the pane without another click; **Translate** asks for the language in the pane, because the menu cannot list the favourites; **Write** waits for the instruction |
 | Conversation context | Every message visible in the open conversation with its sender and date; up to 40 opened messages; related messages by subject | Read mode: the open email with its sender, exact date and subject; emails opened while the pane stays pinned are kept as other opened emails. Draft: the quoted earlier mail as one context item with unknown sender and date. The read pane and the draft's pane are separate, so what was read does not carry into the reply |
 | Selection in a received email | Revise or translate it, then copy the result | Not available: Office.js reads selections only in drafts |
 | Writing | The selection, the user's whole part of a reply above the signature and quote, or an empty draft | The selection, an empty draft, or the whole body of a new message without signature or quote. The user's part of a non-empty reply is not replaced as a whole ([Writing to the draft](#writing-to-the-draft)) |
@@ -35,7 +35,7 @@ See also: [Helper app → Outlook add-in server](./HELPER_APP.md#outlook-add-in-
 | Settings | Per browser profile | Per Outlook application; not shared with the extension. The plans' accounts are the helper app's and shared |
 | Theme | Outlook's colours read from the page | Office's theme colours (checked in the new Outlook) |
 | Robustness | Depends on Outlook's page structure | A supported API; Outlook interface changes do not break it |
-| Installation | One click from a browser store | The helper app, `writehand outlook enable` (Windows asks to trust a local certificate), then the manifest added per mailbox |
+| Installation | One click from a browser store | One PowerShell command installs the helper app and turns on its add-in server (Windows asks once to trust a local certificate); then the manifest is added once per mailbox in Outlook on the web, which the command opens |
 | Updates | Reviewed by the stores, installed automatically | The pane updates with the helper app; manifest changes need a reinstall |
 | Network beyond the provider | None, apart from the helper app's daily update check | Office.js from Microsoft on every pane load |
 
@@ -59,12 +59,19 @@ Sources: [Outlook requirement sets and client table](https://learn.microsoft.com
 
 ## Install
 
-1. Install the helper app ([Helper app → Install](./HELPER_APP.md#install-and-uninstall)).
-2. In a terminal, run `writehand outlook enable` (`& "$env:LOCALAPPDATA\Programs\writehand\writehand.exe" outlook enable` if `writehand` is not on `PATH`). Windows shows a security warning for the certificate **Writehand local Outlook add-in (*your user name*)**; select **Yes**. The command starts the add-in server, registers it to start when you sign in to Windows, and writes the manifest `%LOCALAPPDATA%\Programs\writehand\outlook-manifest.xml`.
-3. Add the manifest to your mailbox once: open <https://aka.ms/olksideload> (Outlook on the web), choose **My add-ins → Custom Addins → Add a custom add-in → Add from File** and select that file. Your organization must let users add their own add-ins (the "My Custom Apps" role, on by default). The new Outlook's own **Apps** store has no custom upload.
-4. Restart Outlook. Open an email or a draft and choose **Writehand** under **Apps** (on a received email the ribbon may put **Apps** in its overflow menu, **…**). If the helper app already has a ChatGPT account or Claude Code, the pane uses it; otherwise choose a method in the pane.
+1. In PowerShell, run:
 
-An administrator can deploy the same manifest from the Microsoft 365 admin center (**Integrated apps**); every user still needs the helper app with `writehand outlook enable`, because the manifest points to their own computer ([Deploy add-ins in the admin center](https://learn.microsoft.com/en-us/microsoft-365/admin/manage/manage-deployment-of-add-ins)).
+   ```powershell
+   irm https://github.com/dervisgenc/writehand/releases/latest/download/install-outlook.ps1 | iex
+   ```
+
+   It installs the helper app for your user account, as the browsers' command does (no administrator rights; the download's SHA-256 checksum is checked), and turns on its Outlook add-in server. Windows shows a security warning for the certificate **Writehand local Outlook add-in (*your user name*)**; select **Yes**. The server starts now and when you sign in to Windows, and the manifest is written to `%LOCALAPPDATA%\Programs\writehand\outlook-manifest.xml`. With the helper app already installed, `writehand outlook enable` does the same (`& "$env:LOCALAPPDATA\Programs\writehand\writehand.exe" outlook enable` if `writehand` is not on `PATH`).
+2. Your browser opens <https://aka.ms/olksideload> (Outlook on the web) and the manifest's path is on the clipboard. Choose **My add-ins → Custom Addins → Add a custom add-in → Add from File**, paste the path into the file name box and install. This is needed once per mailbox. Your organization must let users add their own add-ins (the "My Custom Apps" role, on by default). The new Outlook's own **Apps** store has no custom upload.
+3. Restart Outlook. On a received email choose **Writehand** under **Apps** (the ribbon may put **Apps** in its overflow menu, **…**); on a draft, **Writehand** is a menu with **Revise**, **Translate**, **Write** and **Open Writehand**. If the helper app already has a ChatGPT account or Claude Code, the pane uses it; otherwise choose a method in the pane.
+
+So the user runs one command, confirms one Windows prompt, adds one file in Outlook on the web and restarts Outlook. The certificate prompt cannot be avoided: Office loads add-ins only over HTTPS with a trusted certificate, and the only store Windows lets a program add to without asking is the computer-wide one, which needs administrator rights (another prompt).
+
+An administrator can deploy the same manifest from the Microsoft 365 admin center (**Integrated apps**), which saves users step 2; every user still runs the command of step 1, because the manifest points to their own computer ([Deploy add-ins in the admin center](https://learn.microsoft.com/en-us/microsoft-365/admin/manage/manage-deployment-of-add-ins)).
 
 To remove it, remove **Writehand** on the same **My add-ins** page and run `writehand outlook disable`, which stops the server, removes the certificate (Windows asks again) and the sign-in entry. Uninstalling the helper app does the same.
 
@@ -172,7 +179,13 @@ Data flow of one generation: you press a button in the pane → the connector re
 
 The helper app's release program carries the pane's release build (`apps/outlook-addin/dist`) and its manifest; there is no web hosting and no separate add-in release file. Users install the add-in as described in [Install](#install), from their own computer. The add-in ID and the origin `https://localhost:41537` must not change after the first release ([Decisions](#decisions-that-stay-fixed-unless-discussed)).
 
-A Microsoft Marketplace (AppSource) listing is not possible this way: Marketplace add-ins are hosted on public HTTPS addresses ([Publish to AppSource](https://learn.microsoft.com/en-us/office/dev/add-ins/publish/publish-office-add-ins-to-appsource)).
+A Microsoft Marketplace (AppSource) listing is not possible this way. Checked on 2026-10-25 against the [commercial marketplace certification policies](https://learn.microsoft.com/en-us/legal/marketplace/certification-policies):
+
+- Marketplace add-ins are hosted on a web server with a valid, trusted certificate (1100.5; [Privacy and security](https://learn.microsoft.com/en-us/office/dev/add-ins/concepts/privacy-and-security)); the store's production-level manifest check does not accept `localhost` addresses ([Validate a manifest](https://learn.microsoft.com/en-us/office/dev/add-ins/testing/troubleshoot-manifest)).
+- Outlook add-ins must work in Outlook on the web, and add-ins on every platform their requirement sets allow, Mac included (1120.3, 1120.4); reviewers test on all of them and would not install a helper app.
+- The manifest version must be at least 1.0 (the validator rejects `0.1.0.0`).
+
+A store version would be a second shape of the add-in: a pane on a public HTTPS address (a Writehand web host, static) that works on its own with API keys on every platform, with the plans as an optional extra. The new Outlook does not let a public page reach the helper app (Local Network Access is not delegated to the add-in's frame, measured), so the plans would not work there from a store install. It would also need a Partner Center account for a company (no fee), a privacy policy, support and terms pages, test keys for the reviewers and a review of several weeks. Not planned; decide before the first release whether to pursue it.
 
 ## Development on Windows
 
@@ -206,10 +219,11 @@ A development manifest from `pnpm addin:dev` or `dist-local` and the helper app'
 
 - `tests/support/office/fake-office.ts`: an in-memory Office.js subset (`context.mailbox.item` in read or compose mode with `body.getAsync`, `getTypeAsync`, `setAsync`, `prependAsync`, `setSelectedDataAsync`, `getSelectedDataAsync`, `getComposeTypeAsync`, `displayReplyFormAsync`, `displayReplyForm`, `addHandlerAsync` for `ItemChanged`, `requirements.isSetSupported`, `userProfile`) over a DOM document of the body.
 - `tests/fixtures/outlook-addin/bodies.ts`: synthetic bodies in the web and new Outlook dialect and in classic Outlook's Word HTML (made-up text; the Word bookmarks are unchecked).
-- Vitest project `outlook-addin`: the shared `MailConnector` contract, the connector, the manifest, the Content Security Policy, storage, the clipboard fallback, the sample providers and the helper app bridge (token, requests, failures, cancellation after a timeout).
+- Vitest project `outlook-addin`: the shared `MailConnector` contract, the connector, the manifest (the read button, the draft's menu and the pane address of each command), the pane's command from its address, the Content Security Policy, storage, the clipboard fallback, the sample providers and the helper app bridge (token, requests, failures, cancellation after a timeout).
+- Vitest project `session`: the panel controller opening the panel with a menu command (revise runs at once, translate and write wait).
 - Vitest project `ai-connection`: the method routing for a page without and with the helper app.
-- Vitest project `unit`: the helper app's certificates (TLS from a client that trusts only the authority, name constraints), the add-in server (Host, Origin and token checks, files, control requests), `writehand outlook enable`, `disable`, refresh after install and `status` with fake Windows tools, the windowless program copy and the pane's token.
-- Playwright project `outlook-addin` (`tests/e2e/outlook-addin/`): the release build with the fake Office.js and a stubbed Groq: first run with a key, a reply on a received email, a selection in a draft, the page outside Outlook, and the page as the helper app serves it, drafting a reply with the ChatGPT plan through `/api/host`. It checks the hosts contacted and that nothing was logged as an error.
+- Vitest project `unit`: the helper app's certificates (TLS from a client that trusts only the authority, name constraints), the add-in server (Host, Origin and token checks, files, control requests), `writehand outlook enable` (the add-in dialog and the clipboard the first time only), `install --outlook`, `disable`, refresh after install and `status` with fake Windows tools, the windowless program copy and the pane's token.
+- Playwright project `outlook-addin` (`tests/e2e/outlook-addin/`): the release build with the fake Office.js and a stubbed Groq: first run with a key, a reply on a received email, a selection in a draft, the menu's **Revise** revising a selection without another click, the page outside Outlook, and the page as the helper app serves it, drafting a reply with the ChatGPT plan through `/api/host`. It checks the hosts contacted and that nothing was logged as an error.
 - `pnpm verify:addin` checks the release build: the pages' Content Security Policy, Office.js as the only remote script, the empty token tag, no development code and the manifest's ID, version, origin (`https://localhost:41537`) and permission.
 
 Passing these says nothing about a real Outlook.
@@ -224,7 +238,7 @@ The checklist and every recorded run are in [Manual testing → Outlook add-in](
 2. Classic Outlook for Windows (Word HTML bodies, `bodyMode` ignored, Outlook's undo after a write).
 3. The helper app's install and update with the add-in on a clean Windows machine, recorded in [Manual testing](./MANUAL_TESTING.md#7-outlook-add-in); `docs/RELEASING.md` for the add-in inside the helper app.
 
-Later: Outlook for Mac (the helper app serving the pane there, with the certificate in the login keychain); whole conversations through Microsoft Graph, opt-in; splitting the quoted mail into messages; replacing the user's part of a non-empty reply through `bodyMode`; ribbon quick actions.
+Later: Outlook for Mac (the helper app serving the pane there, with the certificate in the login keychain); whole conversations through Microsoft Graph, opt-in; splitting the quoted mail into messages; replacing the user's part of a non-empty reply through `bodyMode`.
 
 ## Risks and open questions
 
@@ -248,7 +262,7 @@ Later: Outlook for Mac (the helper app serving the pane there, with the certific
 
 Changing these silently would break installed add-ins, the privacy promises or the architecture.
 
-1. **Manifest:** add-in only (XML), minimum Mailbox 1.5, `ReadWriteItem`, messages only, one pinnable task pane command in read and compose. No event-based activation, no on-send handlers.
+1. **Manifest:** add-in only (XML), minimum Mailbox 1.5, `ReadWriteItem`, messages only, one pinnable task pane: a button opens it on a received message, and a menu on a draft opens it with a command (`taskpane.html?command=revise|translate|write`) or without one. No event-based activation, no on-send handlers, no function commands.
 2. **Identity:** the add-in ID (`OUTLOOK_ADDIN_ID`) and its origin `https://localhost:41537` (`OUTLOOK_ADDIN_ORIGIN` in `contracts/src/brand.ts`) never change after the first release.
 3. **Served by the helper app:** the pane comes from the user's own computer, from the signed helper app release; the plans are reached on the pane's own origin, never across origins. Outlook support in the helper app is opt-in (`writehand outlook enable`).
 4. **No server, no mailbox access:** no Writehand web server, Graph, EWS, roaming settings or any request beyond the open item without an explicit, documented, opt-in change. No analytics, error reporting or remote configuration.
