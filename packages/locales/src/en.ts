@@ -10,7 +10,7 @@ const count = countWith('en');
 
 export const en: ExtensionText = {
   description:
-    'Revise, translate and write emails in Outlook on the web and Gmail with the AI you choose. Previewed first; nothing is sent.',
+    'Revise, translate and write emails in Outlook on the web and Gmail with the AI you choose. Previewed first; no email is sent.',
   ui: {
     locale: 'en',
     ai: aiEn,

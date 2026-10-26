@@ -10,7 +10,7 @@ const count = countWith('fr');
 
 export const fr: ExtensionText = {
   description:
-    'Corrigez, traduisez et rédigez vos e-mails dans Outlook sur le web et Gmail avec l’IA choisie. Aperçu d’abord ; rien n’est envoyé.',
+    'Corrigez, traduisez et rédigez vos e-mails dans Outlook sur le web et Gmail avec l’IA choisie. Aperçu d’abord ; aucun e-mail envoyé.',
   ui: {
     locale: 'fr',
     ai: aiFr,

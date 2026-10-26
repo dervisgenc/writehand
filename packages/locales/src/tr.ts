@@ -9,7 +9,7 @@ const plural = (count: number, word: string) => `${count} ${word}`;
 
 export const tr: ExtensionText = {
   description:
-    'Outlook Web ve Gmail’de e-postalarınızı seçtiğiniz yapay zekâyla düzeltin, çevirin ve yazın. Önce önizlenir; hiçbir şey gönderilmez.',
+    'Outlook Web ve Gmail’de e-postalarınızı seçtiğiniz yapay zekâyla düzeltin, çevirin ve yazın. Önce önizlenir; e-posta gönderilmez.',
   ui: {
     locale: 'tr',
     ai: aiTr,

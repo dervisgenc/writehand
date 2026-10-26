@@ -10,7 +10,7 @@ const count = countWith('de');
 
 export const de: ExtensionText = {
   description:
-    'E-Mails in Outlook im Web und Gmail mit KI Ihrer Wahl überarbeiten, übersetzen und schreiben. Erst Vorschau; nichts wird gesendet.',
+    'E-Mails in Outlook im Web und Gmail mit KI Ihrer Wahl überarbeiten, übersetzen und schreiben. Erst Vorschau; kein E-Mail-Versand.',
   ui: {
     locale: 'de',
     ai: aiDe,

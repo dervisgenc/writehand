@@ -298,7 +298,7 @@ async function play(page, act) {
   await act.pause(2000);
   await act.click(card('Email draft').getByRole('button', { name: 'Apply to draft' }), { duration: 800 });
   await act.pause(1200);
-  await act.caption('Nothing is sent. The final check is yours.');
+  await act.caption('No email is sent. The final check is yours.');
   await act.moveTo(page.locator('.compose__send'), 1200);
   await act.pause(2600);
 
