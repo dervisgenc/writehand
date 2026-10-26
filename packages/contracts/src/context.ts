@@ -83,6 +83,8 @@ export type ContextNotice =
   | { readonly kind: 'collapsed-unread'; readonly count: number }
   | { readonly kind: 'collapsed-unknown' }
   | { readonly kind: 'coverage-unverified' }
+  /** Only the open item was read: the open email, or the earlier mail quoted in the draft. */
+  | { readonly kind: 'open-item-only' }
   | { readonly kind: 'virtualized-content' }
   | { readonly kind: 'read-limit' }
   | { readonly kind: 'user-excluded'; readonly count: number }

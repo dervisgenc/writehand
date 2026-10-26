@@ -1,8 +1,7 @@
+import { AI_CONNECTION_STORAGE_KEY, SECRETS_STORAGE_KEY } from '@writehand/ai-connection';
 import { appError, err, type AiInput } from '@writehand/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
-import { AI_CONNECTION_STORAGE_KEY } from '../../../apps/browser-extension/src/platform/ai-connection-store';
-import { SECRETS_STORAGE_KEY } from '../../../apps/browser-extension/src/platform/secret-vault';
 import { createTestConnection, helperStatus, memoryArea, memoryKeys, vault } from './fake-ai';
 
 const input: AiInput = {

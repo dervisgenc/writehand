@@ -1,15 +1,19 @@
 # Installs the Writehand helper app on Windows, for the current user only.
 #
 #   Install:    irm https://github.com/dervisgenc/writehand/releases/latest/download/install.ps1 | iex
+#   Outlook:    irm https://github.com/dervisgenc/writehand/releases/latest/download/install-outlook.ps1 | iex
 #   Uninstall:  & ([scriptblock]::Create((irm https://github.com/dervisgenc/writehand/releases/latest/download/install.ps1))) -Uninstall
 #
 # With `irm | iex`, an extension ID can be passed as $env:WRITEHAND_EXTENSION_ID. The script
 # downloads the program and the release's SHA256SUMS, stops unless the SHA-256 matches, unpacks
 # the program into a temporary folder and lets it install itself into
 # %LOCALAPPDATA%\Programs\writehand. No administrator rights.
+# -Outlook (what install-outlook.ps1 passes) also turns on the Outlook add-in server, as
+# `writehand outlook enable` does: Windows asks once to trust its local certificate.
 # WRITEHAND_DOWNLOAD_BASE replaces the download address (a URL or, in CI, a local folder).
 param(
   [string] $ExtensionId = $env:WRITEHAND_EXTENSION_ID,
+  [switch] $Outlook,
   [switch] $Uninstall,
   [switch] $DeleteData
 )
@@ -63,6 +67,7 @@ function Install-WritehandHelper {
     # The program copies itself into place and registers itself with the browsers.
     $arguments = @('install')
     if ($ExtensionId) { $arguments += "--extension-id=$ExtensionId" }
+    if ($Outlook) { $arguments += '--outlook' }
     & (Join-Path $temporary 'writehand.exe') @arguments
     if ($LASTEXITCODE -ne 0) { throw "Installing failed (exit code $LASTEXITCODE)." }
   } finally {

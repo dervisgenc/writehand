@@ -42,3 +42,31 @@ export const HOST_RESPONSE_PAYLOADS = {
 } as const satisfies Record<HostRequestType, z.ZodType>;
 
 export type HostResponsePayload<T extends HostRequestType> = z.infer<(typeof HOST_RESPONSE_PAYLOADS)[T]>;
+
+/**
+ * The helper app's local Outlook add-in server answers the task pane's requests at this path, on
+ * the pane's own origin. A request carries the token the server wrote into the pane's page.
+ */
+export const OUTLOOK_BRIDGE = Object.freeze({
+  path: '/api/host',
+  tokenHeader: 'x-writehand-bridge',
+  /** `<meta name>` in `taskpane.html` whose `content` the server fills with the token. */
+  tokenMeta: 'writehand-bridge',
+  /**
+   * Query parameter of the pane's address in the user's own manifest. The server fills in the
+   * token only for a page requested with this user's key (see `pageKey` in the helper app).
+   */
+  pageKeyParameter: 'key',
+});
+
+/**
+ * What the add-in may ask the helper app. Updates are not among them: they stay with the browser
+ * extension's settings and the `writehand update` command.
+ */
+export const OUTLOOK_BRIDGE_REQUESTS: ReadonlySet<HostRequestType> = new Set([
+  'AI_STATUS',
+  'AI_COMMAND',
+  'AI_GENERATE',
+  'AI_CANCEL',
+  'HOST_INFO',
+]);

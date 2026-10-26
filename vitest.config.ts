@@ -34,6 +34,27 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'outlook-addin',
+          environment: 'jsdom',
+          include: ['tests/integration/outlook-addin/**/*.test.ts'],
+        },
+      },
+      {
+        test: {
+          name: 'ai-connection',
+          environment: 'node',
+          include: ['tests/integration/ai-connection/**/*.test.ts'],
+        },
+      },
+      {
+        test: {
+          name: 'session',
+          environment: 'jsdom',
+          include: ['tests/integration/session/**/*.test.ts'],
+        },
+      },
+      {
+        test: {
           name: 'extension',
           environment: 'jsdom',
           include: ['tests/integration/extension/**/*.test.ts'],

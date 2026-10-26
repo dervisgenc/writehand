@@ -1,0 +1,20 @@
+{
+  "name": "@writehand/outlook-addin",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Mail connector for the Outlook add-in: reads and writes the open item through Office.js",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@writehand/contracts": "workspace:*",
+    "@writehand/mail-dom": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/office-js": "1.0.613"
+  }
+}

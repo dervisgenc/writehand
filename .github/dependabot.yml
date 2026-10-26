@@ -1,0 +1,13 @@
+# Keeps the commit SHAs that the workflows pin their actions to up to date. One grouped pull request
+# per month; review the action's release notes before merging, since these actions run in the release build.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']
+    commit-message:
+      prefix: ci

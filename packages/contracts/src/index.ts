@@ -17,4 +17,5 @@ export * from './protocol';
 export * from './result';
 export * from './runtime-messages';
 export * from './settings';
+export * from './storage';
 export * from './text-processor';

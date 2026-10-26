@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { usePanelSession, type PanelSessionDependencies } from '@writehand/session';
 import { InlineAssistant } from '@writehand/ui';
 
-import { usePanelSession, type PanelSessionDependencies } from '../composables/use-panel-session';
 import AiConnectionIndicator from './AiConnectionIndicator.vue';
 
 const props = defineProps<{

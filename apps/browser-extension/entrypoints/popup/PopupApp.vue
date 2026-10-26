@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { SelectorReport, Theme } from '@writehand/contracts';
+import type { ExtensionText, PopupStatusKey } from '@writehand/locales';
 import { computed, onMounted, ref } from 'vue';
 
-import type { ExtensionText, PopupStatusKey } from '../../src/locales';
 import {
   activeTab,
   hasSiteAccess,

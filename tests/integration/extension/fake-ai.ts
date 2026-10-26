@@ -1,6 +1,15 @@
 import { webcrypto } from 'node:crypto';
 
 import {
+  createAiConnection,
+  createAiConnectionStore,
+  createApiKeyConnection,
+  createHelperClient,
+  createSecretVault,
+  type ApiKeyProvider,
+  type EncryptionKeyStore,
+} from '@writehand/ai-connection';
+import {
   appError,
   err,
   ok,
@@ -9,21 +18,9 @@ import {
   type ApiProvider,
   type HelperStatus,
   type HostRequest,
+  type StorageArea,
 } from '@writehand/contracts';
 import { vi } from 'vitest';
-
-import { createAiConnection } from '../../../apps/browser-extension/src/platform/ai-connection';
-import { createAiConnectionStore } from '../../../apps/browser-extension/src/platform/ai-connection-store';
-import {
-  createApiKeyConnection,
-  type ApiKeyProvider,
-} from '../../../apps/browser-extension/src/platform/api-key-connection';
-import { createHelperClient } from '../../../apps/browser-extension/src/platform/helper-client';
-import {
-  createSecretVault,
-  type EncryptionKeyStore,
-} from '../../../apps/browser-extension/src/platform/secret-vault';
-import type { StorageArea } from '../../../apps/browser-extension/src/platform/settings-store';
 
 /** `storage.local` in memory; values are cloned like the browser does. */
 export function memoryArea(): StorageArea & { data: Record<string, unknown> } {

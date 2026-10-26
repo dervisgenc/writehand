@@ -1,8 +1,6 @@
 import { PRODUCT_NAME, UI_LANGUAGES } from '@writehand/contracts';
+import { addinTextFor, countWith, manifestMessages, textFor, uiLanguageFor } from '@writehand/locales';
 import { describe, expect, it } from 'vitest';
-
-import { manifestMessages, textFor, uiLanguageFor } from '../../../apps/browser-extension/src/locales';
-import { countWith } from '../../../apps/browser-extension/src/locales/plural';
 
 /** The plain strings in the text tree with their paths (function-valued texts excluded). */
 function strings(value: unknown, path = ''): [string, string][] {
@@ -62,6 +60,51 @@ describe('UI languages', () => {
     for (const language of UI_LANGUAGES) {
       const hardCoded = strings(textFor(language)).filter(([, value]) => value.includes('Email Writer'));
       expect(hardCoded, language).toEqual([]);
+    }
+  });
+
+  it.each(UI_LANGUAGES)(
+    '%s: the Outlook add-in has its own text, translated, without empty strings',
+    (language) => {
+      const text = addinTextFor(language);
+      const english = new Map(strings(addinTextFor('en').addin));
+
+      expect(text.ui.locale).toBe(language);
+      for (const [path, value] of strings(text.addin)) {
+        expect(value.trim(), path).not.toBe('');
+        if (language !== 'en') expect(value.length > 30 && english.get(path) === value, path).toBe(false);
+        expect(value, path).not.toMatch(/pnpm |docs\/|\.md\b/);
+      }
+      // The add-in's sentences about the key speak of Outlook, not of the browser.
+      expect(text.ui.ai.keySaved('Groq')).not.toBe(textFor(language).ui.ai.keySaved('Groq'));
+      expect(text.ui.errors.CLIPBOARD_UNAVAILABLE).toBe(text.addin.errors.CLIPBOARD_UNAVAILABLE);
+    },
+  );
+
+  it('keeps the Outlook manifest texts within the manifest limits', () => {
+    for (const language of UI_LANGUAGES) {
+      const { addin, ui } = addinTextFor(language);
+      const { manifest } = addin;
+      const { commands } = manifest;
+      // DisplayName, ShortStrings: 125 characters; Description, LongStrings: 250 characters.
+      expect(manifest.description.length, language).toBeLessThanOrEqual(250);
+      const tooltips = [
+        manifest.buttonTooltip,
+        commands.reviseTooltip,
+        commands.translateTooltip,
+        commands.writeTooltip,
+      ];
+      for (const tooltip of tooltips) expect(tooltip.length, language).toBeLessThanOrEqual(250);
+      // The compose menu's labels are the toolbar's, and "Open Writehand".
+      const labels = [
+        manifest.groupLabel,
+        manifest.buttonLabel,
+        commands.open,
+        ui.compose.revise,
+        ui.compose.translate,
+        ui.compose.write,
+      ];
+      for (const label of labels) expect(label.length, language).toBeLessThanOrEqual(125);
     }
   });
 

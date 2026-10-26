@@ -1,9 +1,8 @@
 import type { HostInfo } from '@writehand/contracts';
+import { tr } from '@writehand/locales';
 import { HelperCard, type HelperView } from '@writehand/ui';
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
-
-import { tr } from '../../../apps/browser-extension/src/locales/tr';
 
 const info: HostInfo = {
   version: '0.2.0',

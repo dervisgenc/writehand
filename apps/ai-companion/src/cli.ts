@@ -1,9 +1,19 @@
 import { isSea } from 'node:sea';
 import { AiFailure } from '@writehand/ai-openai';
+import addinFileEntries from 'writehand:addin-files';
 
 import { runHost } from './host';
 import { configuredPlatform, install, removeLeftovers, status, uninstall } from './install';
 import { parseCommand, USAGE } from './install-plan';
+import {
+  addinFiles,
+  disableOutlook,
+  enableOutlook,
+  outlookStatus,
+  serveOutlook,
+  systemIo,
+  type OutlookContext,
+} from './outlook';
 import { hostPlatform } from './platform';
 import { createUpdater, UPDATE_FAILURES } from './update';
 import { HOST_VERSION } from './version';
@@ -15,6 +25,7 @@ import { HOST_VERSION } from './version';
  */
 async function main(): Promise<void> {
   const command = parseCommand(process.argv.slice(2), process.stdin.isTTY === true);
+  const addin = addinFiles(addinFileEntries);
   switch (command.kind) {
     case 'host': {
       const { platform, config } = await configuredPlatform();
@@ -29,6 +40,8 @@ async function main(): Promise<void> {
         source: isSea()
           ? { program: process.execPath }
           : { script: process.argv[1] ?? '', node: process.execPath },
+        addin,
+        outlook: command.outlook,
       });
       return;
     case 'uninstall':
@@ -50,6 +63,17 @@ async function main(): Promise<void> {
       }
       const { version } = await updater.update('inherit');
       if (version === HOST_VERSION) process.stdout.write(`${updater.describe(await updater.check())}\n`);
+      return;
+    }
+    case 'outlook': {
+      const { platform, config } = await configuredPlatform();
+      const context: OutlookContext = { platform, config, files: addin };
+      if (command.action === 'serve') {
+        void removeLeftovers(platform);
+        await serveOutlook(context, systemIo);
+      } else if (command.action === 'enable') await enableOutlook(context, systemIo);
+      else if (command.action === 'disable') await disableOutlook(context, systemIo);
+      else await outlookStatus(context, systemIo);
       return;
     }
     case 'version':

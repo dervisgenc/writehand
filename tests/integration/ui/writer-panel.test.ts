@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils';
+import { tr } from '@writehand/locales';
 import {
   ComposeToolbar,
   ContextInspector,
@@ -14,8 +15,6 @@ import {
 } from '@writehand/ui';
 import { describe, expect, it } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
-
-import { tr } from '../../../apps/browser-extension/src/locales/tr';
 
 const emptyContext: ContextView = {
   status: 'not-loaded',
@@ -64,6 +63,7 @@ function view(overrides: Partial<PanelView> = {}): PanelView {
       isApplying: false,
       canReplaceExistingReply: false,
       canUseOpenComposer: false,
+      canCreateReply: false,
     },
     status: { kind: 'none' },
     staleNotice: null,
@@ -156,6 +156,40 @@ describe('WriterPanel', () => {
     expect(wrapper.text()).toContain('Paneldeki metniniz değiştirilecek.');
     expect(wrapper.text()).toContain('düzenlendi');
     wrapper.unmount();
+  });
+
+  it('offers to open a new reply when no draft is open, then names it as the target', async () => {
+    const targets: string[] = [];
+    const readMode = view({
+      operation: 'reply',
+      target: { kind: 'none' },
+      source: { ...view().source, origin: 'panel', text: '', instruction: 'Teşekkür et' },
+      preview: { text: 'Teşekkürler, perşembe uygun.', sample: false, stale: false, unchanged: false },
+      apply: { ...view().apply, mode: null, canCopy: true, canCreateReply: true },
+    });
+    const offered = withText(
+      WriterPanel,
+      { view: readMode, limits: { source: 20_000, instruction: 5_000 } },
+      { onBindTarget: (mode: string) => targets.push(mode) },
+    );
+    const open = offered.findAll('button').find((b) => b.text() === 'Bu metinle yanıt aç');
+    await open!.trigger('click');
+    expect(targets).toEqual(['create-reply']);
+    offered.unmount();
+
+    const bound = withText(WriterPanel, {
+      view: {
+        ...readMode,
+        target: { kind: 'new-reply' },
+        apply: { ...readMode.apply, mode: 'create-reply', canApply: true, canCreateReply: false },
+      },
+      limits: { source: 20_000, instruction: 5_000 },
+    });
+    expect(bound.text()).toContain('Bu e-postaya yeni yanıt');
+    expect(bound.text()).toContain('Bu e-postaya taslak olarak açılan yeni bir yanıt');
+    // A new reply changes no existing text, so the formatting note does not apply.
+    expect(bound.text()).not.toContain('değişen bölümdeki biçim');
+    bound.unmount();
   });
 });
 

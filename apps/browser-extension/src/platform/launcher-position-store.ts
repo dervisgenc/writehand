@@ -1,7 +1,5 @@
-import { SITE_IDS, type SiteId } from '@writehand/contracts';
+import { SITE_IDS, type SiteId, type StorageArea } from '@writehand/contracts';
 import { z } from 'zod';
-
-import type { StorageArea } from './settings-store';
 
 export const LAUNCHER_POSITIONS_STORAGE_KEY = 'launcherPositions';
 

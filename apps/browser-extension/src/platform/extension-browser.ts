@@ -4,10 +4,10 @@ import {
   NATIVE_HOST_NAME,
   type ApiProvider,
   type HostOperatingSystem,
+  type StorageArea,
 } from '@writehand/contracts';
 
 import type { MessageSender } from './runtime-messaging';
-import type { StorageArea } from './settings-store';
 
 /**
  * The only place that touches browser extension APIs. Browser-specific differences

@@ -16,6 +16,14 @@ const hostConfigSchema = z.object({
   claudeConfigDir: z.string().min(1).nullable().default(null),
   /** The folder of the Node.js that an npm-installed Claude Code runs on. */
   nodeDirectory: z.string().min(1).nullable().default(null),
+  /**
+   * Set by `writehand outlook enable`: the Outlook add-in server is on, and this certificate
+   * authority (SHA-1 thumbprint) is in the user's trusted roots until the date it expires.
+   */
+  outlook: z
+    .object({ authorityThumbprint: z.string().regex(/^[0-9A-F]{40}$/), notAfter: z.string().datetime() })
+    .nullable()
+    .default(null),
 });
 export type HostConfig = z.output<typeof hostConfigSchema>;
 

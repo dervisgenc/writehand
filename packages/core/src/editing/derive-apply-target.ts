@@ -41,10 +41,13 @@ export function deriveApplyTarget(binding: SourceBinding, operation: Operation):
   }
 }
 
-/** Current target for the write. The session is its only owner. */
+/**
+ * Current target for the write. The session is its only owner. A received message never grants
+ * a draft target; a new reply the user chose writes over nothing, so it stays valid.
+ */
 export function effectiveApplyTarget(state: SessionState): ApplyTarget | null {
   if (state.binding.kind === 'received-message') {
-    return null;
+    return state.explicitTarget?.mode === 'create-reply' ? state.explicitTarget : null;
   }
   return state.explicitTarget ?? deriveApplyTarget(state.binding, state.form.operation);
 }

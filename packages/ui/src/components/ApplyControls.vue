@@ -2,7 +2,7 @@
 import { computed, useId } from 'vue';
 
 import { useUiText } from '../i18n';
-import type { ApplyView } from '../view-model';
+import type { ApplyView, BindTargetMode } from '../view-model';
 import AppIcon from './AppIcon.vue';
 
 const props = defineProps<{
@@ -13,7 +13,7 @@ const emit = defineEmits<{
   apply: [];
   copy: [];
   undo: [];
-  'bind-target': [mode: 'replace-existing-reply' | 'use-open-composer'];
+  'bind-target': [mode: BindTargetMode];
 }>();
 
 const text = useUiText();
@@ -29,7 +29,19 @@ const scope = computed(() =>
     <p class="ew-apply__scope">
       <span class="ew-apply__scope-label">{{ text.apply.scopeLabel }}:</span> {{ scope }}
     </p>
-    <div v-if="apply.canReplaceExistingReply || apply.canUseOpenComposer" class="ew-apply__bind">
+    <div
+      v-if="apply.canReplaceExistingReply || apply.canUseOpenComposer || apply.canCreateReply"
+      class="ew-apply__bind"
+    >
+      <button
+        v-if="apply.canCreateReply"
+        type="button"
+        class="ew-link"
+        :disabled="apply.isApplying"
+        @click="emit('bind-target', 'create-reply')"
+      >
+        {{ text.apply.createReply }}
+      </button>
       <button
         v-if="apply.canUseOpenComposer"
         type="button"
@@ -73,7 +85,10 @@ const scope = computed(() =>
         {{ text.apply.undo }}
       </button>
     </div>
-    <p v-if="apply.mode !== null" class="ew-muted">{{ text.apply.formattingNote }}</p>
+    <!-- A new reply changes no existing text, so no formatting can be lost. -->
+    <p v-if="apply.mode !== null && apply.mode !== 'create-reply'" class="ew-muted">
+      {{ text.apply.formattingNote }}
+    </p>
     <!-- Why the button is disabled is not conveyed by color alone. -->
     <p v-if="apply.blocker !== null && apply.canCopy" :id="blockerId" class="ew-muted">
       {{ text.errors[apply.blocker] }}

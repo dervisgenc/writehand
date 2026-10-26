@@ -4,3 +4,7 @@ packages:
   - packages/mail-connectors/*
 allowBuilds:
   esbuild: true
+overrides:
+  # fx-runner (web-ext's Firefox launcher, development only) pins shell-quote 1.10.0, which has a
+  # known vulnerability; 1.11+ keeps the same API.
+  shell-quote: ^1.12.0

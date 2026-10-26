@@ -83,7 +83,15 @@ Read the full [privacy policy](./PRIVACY.md). To report a security issue private
 
 ## Status
 
-Writehand is in its first public release. Store listings for Firefox Add-ons and Microsoft Edge Add-ons are on their way, followed by the Chrome Web Store. See the [changelog](./CHANGELOG.md) for what is included.
+Store listings for Firefox Add-ons and Microsoft Edge Add-ons are on their way, followed by the Chrome Web Store. See the [changelog](./CHANGELOG.md) for what is included.
+
+**Outlook applications on Windows (preview).** Browser extensions do not run inside the new Outlook or classic Outlook, so Writehand also comes as an Outlook add-in. The helper app serves it on your computer, so it works with the ChatGPT and Claude plans as well as an API key. One PowerShell command installs both; Windows asks once to trust a certificate for the computer's local addresses, and the command then opens Outlook on the web, where you add the add-in once:
+
+```powershell
+irm https://github.com/dervisgenc/writehand/releases/latest/download/install-outlook.ps1 | iex
+```
+
+So far it has been checked in the new Outlook for Windows with a work or school account. See [Outlook add-in](./docs/OUTLOOK_ADDIN.md) for what it does, what is checked and how to remove it.
 
 ## Development
 
@@ -100,6 +108,7 @@ pnpm ai:build       # helper app as a Node.js script
 pnpm ai:install     # install that build for your browsers (add --extension-id=ID for an unpacked Chromium build)
 pnpm ai:sea         # single-file helper app and its release archive (Node.js 24)
 pnpm store:assets   # store icons, screenshots, promo images and demo video (store/)
+pnpm addin:dev      # Outlook add-in task pane on https://localhost:3000 (see docs/OUTLOOK_ADDIN.md)
 ```
 
 Releases are built by GitHub Actions from `vX.Y.Z` tags; see [releasing](./docs/RELEASING.md) and [building from source](./docs/BUILD.md). Contributions are welcome; please read [CONTRIBUTING.md](./CONTRIBUTING.md).
@@ -107,19 +116,24 @@ Releases are built by GitHub Actions from `vX.Y.Z` tags; see [releasing](./docs/
 ## Project structure
 
 ```text
-apps/browser-extension/        WXT extension: entry points, welcome wizard, controllers, mounting, platform helpers, locales
+apps/browser-extension/        WXT extension: entry points, welcome wizard, mounting, platform helpers
 apps/ai-companion/             Helper app: native messaging host, installer, updater, install scripts
+apps/outlook-addin/            Outlook add-in: task pane (Vite and Vue), manifest generation
 packages/ai-openai/            ChatGPT OAuth (Sign in with ChatGPT, Codex sign-in), model discovery and Responses adapter (also for OpenAI API keys)
 packages/ai-chat-completions/  Groq and OpenRouter API keys through OpenAI-compatible Chat Completions
 packages/ai-claude-code/       Runs the user's Claude Code in a restricted print mode
 packages/contracts/            Shared data and action definitions, boundary schemas, brand, AI prompt
 packages/core/                 Context, action preparation, session state and write preconditions (pure functions)
+packages/session/              Panel session shared by the apps: controllers, opened-message history, settings store, Vue bridge
+packages/ai-connection/        API key method shared by the apps: encrypted key vault, connection choices, providers
+packages/locales/              User-facing text in the five interface languages
 packages/email-format/         Limited Markdown to email-safe HTML, plain text and verification text
 packages/ui/                   Vue panel, toolbar, result card, settings and setup components
 packages/mail-connectors/
   outlook-web/                 Reads, observes and writes Outlook on the web pages in a controlled way
   gmail-web/                   Reads, observes and writes Gmail pages in a controlled way
-  mail-dom/                    What the web mail connectors share: text extraction, drafts, selection, writing, undo
+  outlook-addin/               Reads and writes the open Outlook item through Office.js (Outlook add-in)
+  mail-dom/                    What the mail connectors share: text extraction, drafts, selection, writing, undo
 tests/                         Unit, contract, integration and end-to-end tests with synthetic samples
 scripts/store-assets/          Demo mailbox and scripts that produce the store images and the demo video
 assets/brand/                  Logo sources (SVG)

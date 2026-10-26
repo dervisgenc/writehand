@@ -1,4 +1,10 @@
-import type { ComposerRef, MailConnector, MailEvent, ThreadRef } from '@writehand/contracts';
+import {
+  pageFeatures,
+  type ComposerRef,
+  type MailConnector,
+  type MailEvent,
+  type ThreadRef,
+} from '@writehand/contracts';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 /**
@@ -14,12 +20,21 @@ export interface ContractHarness {
   typeInComposer(ref: ComposerRef, text: string): void;
   /** A phrase present in the draft that can be selected. */
   readonly selectablePhrase: string;
+  /**
+   * `false` where a replaced selection cannot be restored exactly (Office.js has no range API);
+   * such a connector reports `undoId: null` for it, as the contract allows.
+   */
+  readonly undoesSelectionWrites?: boolean;
   cleanup(): void;
 }
 
 const notAborted = { aborted: false };
 
-export function describeMailConnectorContract(name: string, setup: () => ContractHarness): void {
+/** `setup` may wait until the connector reports a ready page (Office.js answers asynchronously). */
+export function describeMailConnectorContract(
+  name: string,
+  setup: () => ContractHarness | Promise<ContractHarness>,
+): void {
   describe(`MailConnector contract: ${name}`, () => {
     let harness: ContractHarness;
     let connector: MailConnector;
@@ -59,8 +74,8 @@ export function describeMailConnectorContract(name: string, setup: () => Contrac
       return { composer, request, outcome: await connector.applyText(request) };
     }
 
-    beforeEach(() => {
-      harness = setup();
+    beforeEach(async () => {
+      harness = await setup();
       connector = harness.connector;
     });
     afterEach(() => {
@@ -87,8 +102,30 @@ export function describeMailConnectorContract(name: string, setup: () => Contrac
       const snapshot = await connector.readThread(thread, notAborted);
       if (!snapshot.ok) throw new Error(snapshot.error.code);
       expect(snapshot.value.ref).toEqual(thread);
-      expect(snapshot.value.coverage.source).toBe('visible-dom');
+      expect(['visible-dom', 'item-body']).toContain(snapshot.value.coverage.source);
       expect(['partial', 'unknown']).toContain(snapshot.value.coverage.status);
+    });
+
+    it('does not offer a new reply while a draft is open, and refuses that target without writing', async () => {
+      expect(pageFeatures(connector.getPageState()).createReply).toBe(false);
+      const before = await connector.readComposer(firstComposer());
+      const outcome = await connector.applyText({
+        applyOperationId: 'apply-reply',
+        target: {
+          mode: 'create-reply',
+          threadRef: activeThread(),
+          messageKey: 'm1',
+          expectedThreadRevision: 1,
+        },
+        text: 'Yeni yanıt',
+      });
+      expect(outcome).toEqual({
+        status: 'rejected',
+        error: expect.objectContaining({ code: 'WRITE_UNSUPPORTED' }),
+      });
+      const after = await connector.readComposer(firstComposer());
+      expect(after.ok && after.value.editableText).toBe(before.ok && before.value.editableText);
+      expect(after.ok && after.value.revision).toBe(before.ok && before.value.revision);
     });
 
     it('returns TARGET_MISSING for an unknown draft', async () => {
@@ -146,6 +183,11 @@ export function describeMailConnectorContract(name: string, setup: () => Contrac
     });
 
     it('undoes the last apply, but not after the user has typed in between', async () => {
+      if (harness.undoesSelectionWrites === false) {
+        const { outcome } = await selectAndApply('YENİ METİN');
+        expect(outcome).toMatchObject({ status: 'applied', undoId: null });
+        return;
+      }
       const before = await connector.readComposer(firstComposer());
       const { composer, outcome } = await selectAndApply('YENİ METİN');
       if (outcome.status !== 'applied' || outcome.undoId === null) throw new Error('not applied');

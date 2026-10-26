@@ -13,12 +13,35 @@ import type { AbortSignalLike, Result } from './result';
 
 export type PageSupport = 'waiting' | 'ready' | 'unsupported';
 
+/** What the mail environment allows beyond reading and writing drafts. */
+export interface PageFeatures {
+  /** Text selected in a received message can be read (`readSelectedMessageText`). */
+  readonly receivedSelection: boolean;
+  /** Formatted results (lists, tables, charts) can be written to a draft. */
+  readonly richContent: boolean;
+  /** A result can open a new reply to the open message (the `create-reply` target). */
+  readonly createReply: boolean;
+}
+
+/** What a web mail page offers; a connector that does not report `features` gets these. */
+export const DEFAULT_PAGE_FEATURES: PageFeatures = Object.freeze({
+  receivedSelection: true,
+  richContent: true,
+  createReply: false,
+});
+
 /** Overall page state. Carries no message bodies. */
 export interface PageState {
   readonly support: PageSupport;
   readonly scope: MailScope | null;
   readonly activeThread: ThreadRef | null;
   readonly composers: readonly ComposerRef[];
+  /** Left out when the page offers `DEFAULT_PAGE_FEATURES`. */
+  readonly features?: PageFeatures;
+}
+
+export function pageFeatures(state: PageState): PageFeatures {
+  return state.features ?? DEFAULT_PAGE_FEATURES;
 }
 
 export type MailEvent =
@@ -54,8 +77,8 @@ export interface ApplyRequest {
   readonly target: ApplyTarget;
   readonly text: string;
   /**
-   * Formatted content (lists, tables, charts). Given only when writing to the whole draft
-   * or to an empty draft; `text` is the plain-text equivalent of the same content.
+   * Formatted content (lists, tables, charts). Given only when writing to the whole draft,
+   * to an empty draft or to a new reply; `text` is the plain-text equivalent of the same content.
    * `visibleText` is the text the editor is expected to read back after the write.
    */
   readonly rich?: { readonly html: string; readonly visibleText: string };
@@ -64,7 +87,8 @@ export interface ApplyRequest {
 export type ApplyOutcome =
   | {
       readonly status: 'applied';
-      readonly composerRevision: number;
+      /** `null` for a `create-reply` target: the reply opened in a draft the session does not track. */
+      readonly composerRevision: number | null;
       /** `null` when the changed range could not be bounded exactly; undo is not offered. */
       readonly undoId: string | null;
     }

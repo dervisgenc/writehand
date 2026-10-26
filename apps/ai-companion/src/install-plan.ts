@@ -4,6 +4,7 @@ import {
   HELPER_COMMAND,
   HOST_BROWSERS,
   NATIVE_HOST_NAME,
+  OUTLOOK_ADDIN_PORT,
   PRODUCT_NAME,
   type HostBrowser,
 } from '@writehand/contracts';
@@ -16,26 +17,43 @@ export type CliCommand =
   | { readonly kind: 'host' }
   | { readonly kind: 'help' }
   | { readonly kind: 'version' }
-  | { readonly kind: 'install'; readonly extensionIds: readonly string[]; readonly development: boolean }
+  | {
+      readonly kind: 'install';
+      readonly extensionIds: readonly string[];
+      readonly development: boolean;
+      /** Also turns on the Outlook add-in server (`outlook enable`) unless it is on already. */
+      readonly outlook: boolean;
+    }
   | { readonly kind: 'uninstall'; readonly deleteData: boolean }
   | { readonly kind: 'status' }
-  | { readonly kind: 'update'; readonly checkOnly: boolean };
+  | { readonly kind: 'update'; readonly checkOnly: boolean }
+  | { readonly kind: 'outlook'; readonly action: OutlookAction };
+
+export const OUTLOOK_ACTIONS = ['enable', 'disable', 'status', 'serve'] as const;
+export type OutlookAction = (typeof OUTLOOK_ACTIONS)[number];
 
 export const USAGE = `Usage: ${HELPER_COMMAND} <command>
 
 Commands:
-  install [--extension-id=ID]... [--dev]
+  install [--extension-id=ID]... [--dev] [--outlook]
       Install the helper app for this user and register it with Firefox, Chrome, Edge
       and Brave. --extension-id allows another extension, e.g. an unpacked development
-      build. --dev installs the Node.js build of a source checkout.
+      build. --dev installs the Node.js build of a source checkout. --outlook (Windows)
+      also turns on the Outlook add-in server, as outlook enable does.
   uninstall [--delete-data]
       Remove the browser registrations and the program. --delete-data also signs out
-      of ChatGPT and deletes credentials and API keys from this computer.
+      of ChatGPT and deletes its saved sign-in details from this computer.
   status
       Show the version, the browser registrations and whether Claude Code is ready.
   update [--check]
       Install the latest release if it is newer, after verifying its signature and
       checksum. --check only reports whether a newer release exists.
+  outlook enable | disable | status
+      Windows: serve the Outlook add-in on this computer (https://localhost:${OUTLOOK_ADDIN_PORT}) so
+      the new and classic Outlook can use the ChatGPT and Claude plans. enable asks Windows to
+      trust a certificate valid only for this computer's local addresses, starts the server now
+      and at sign-in, and writes the manifest to add in Outlook. disable removes all of it.
+      (outlook serve is the server itself, which Windows starts at sign-in.)
   version
       Print the version.
 
@@ -44,6 +62,7 @@ Browsers start the program without a command; it then serves the ${PRODUCT_NAME}
 
 const COMMANDS = new Set([
   'install',
+  'outlook',
   'uninstall',
   'status',
   'update',
@@ -73,11 +92,12 @@ export function parseCommand(argv: readonly string[], interactive: boolean): Cli
   };
   switch (name) {
     case 'install':
-      accept(['--dev'], true);
+      accept(['--dev', '--outlook'], true);
       return {
         kind: 'install',
         extensionIds: args.filter(isExtensionId).map((arg) => arg.slice('--extension-id='.length)),
         development: args.includes('--dev'),
+        outlook: args.includes('--outlook'),
       };
     case 'uninstall':
       accept(['--delete-data']);
@@ -88,6 +108,14 @@ export function parseCommand(argv: readonly string[], interactive: boolean): Cli
     case 'update':
       accept(['--check']);
       return { kind: 'update', checkOnly: args.includes('--check') };
+    case 'outlook': {
+      const [action, ...rest] = args;
+      if (!OUTLOOK_ACTIONS.includes(action as OutlookAction) || rest.length > 0)
+        throw new Error(`Usage: ${HELPER_COMMAND} outlook enable | disable | status
+
+${USAGE}`);
+      return { kind: 'outlook', action: action as OutlookAction };
+    }
     case 'version':
     case '--version':
       accept([]);

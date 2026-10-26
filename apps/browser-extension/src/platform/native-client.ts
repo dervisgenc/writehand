@@ -1,4 +1,4 @@
-import { PROTOCOL_VERSION, type HostRequest } from '@writehand/contracts';
+import { failureResponse, PROTOCOL_VERSION, type HostRequest } from '@writehand/contracts';
 
 export interface NativePort {
   postMessage(message: unknown): void;
@@ -20,17 +20,11 @@ export function createNativeClient(connect: () => NativePort) {
     string,
     { finish: (response: unknown) => void; timer: ReturnType<typeof setTimeout> }
   >();
-  const failure = (requestId: string, code = 'AI_HOST_UNAVAILABLE') => ({
-    protocolVersion: PROTOCOL_VERSION,
-    requestId,
-    ok: false,
-    error: { code },
-  });
   const close = () => {
     port = null;
     for (const [id, entry] of pending) {
       clearTimeout(entry.timer);
-      entry.finish(failure(id));
+      entry.finish(failureResponse(id));
     }
     pending.clear();
   };
@@ -76,13 +70,13 @@ export function createNativeClient(connect: () => NativePort) {
                 /* Host may have exited. */
               }
             }
-            resolve(failure(request.requestId, 'AI_UNAVAILABLE'));
+            resolve(failureResponse(request.requestId, 'AI_UNAVAILABLE'));
           }, REQUEST_TIMEOUTS[request.type] ?? 90_000);
           pending.set(request.requestId, { finish: resolve, timer });
           connection.postMessage(request);
         } catch {
           close();
-          resolve(failure(request.requestId));
+          resolve(failureResponse(request.requestId));
         }
       });
     },

@@ -19,8 +19,17 @@ export { observePage } from './observe-page';
 export type { ObservePageOptions, PageObserver } from './observe-page';
 export { captureReceivedSelection } from './selection/capture-received-selection';
 export type { ReceivedSelectionSources } from './selection/capture-received-selection';
+export {
+  createMailMarkupClassifier,
+  MAIL_QUOTE_START_SELECTORS,
+  MAIL_SIGNATURE_SELECTORS,
+  WORD_MAIL_QUOTE_START_SELECTORS,
+  WORD_MAIL_SIGNATURE_SELECTORS,
+} from './mail-markup';
+export type { MailMarkup } from './mail-markup';
 export { labelText, senderDisplayName } from './text';
 export { isDarkBackground, relativeLuminance } from './theme';
+export { comparableText, isProtectedIntact } from './writing/composer-handle';
 export { createExecCommandWriter, createPasteEventWriter } from './writing/editor-writer';
 export type { EditorWriter } from './writing/editor-writer';
 export { selectorQueries } from './selectors';

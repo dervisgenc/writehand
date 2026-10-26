@@ -1,0 +1,76 @@
+/* The task pane fills Outlook's pane; the shared panel and page styles do the rest. */
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+.ew-root.ew-addin {
+  min-height: 100vh;
+  background: var(--ew-color-bg);
+  color: var(--ew-color-text);
+}
+
+.ew-root.ew-addin.ew-page {
+  background: var(--ew-color-surface);
+}
+
+.ew-root .ew-addin__notice {
+  margin: 0;
+  padding: 24px 16px;
+  color: var(--ew-color-muted);
+  font-size: 14px;
+}
+
+/* Settings and first run: the extension's page layout, narrowed to the pane. */
+.ew-root .ew-page__main.ew-addin-page {
+  gap: 16px;
+  padding: 16px 12px 32px;
+}
+
+.ew-root .ew-addin-page .ew-settings-card {
+  padding: 16px;
+}
+
+.ew-root .ew-addin-page__header {
+  justify-content: space-between;
+}
+
+.ew-root .ew-addin-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Save bar that sticks to the bottom of the pane while there are unsaved changes. */
+.ew-root .ew-addin-savebar {
+  position: sticky;
+  bottom: 12px;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--ew-color-border);
+  border-radius: 12px;
+  background: var(--ew-color-bg);
+  box-shadow: var(--ew-shadow-16);
+}
+
+.ew-root .ew-addin-savebar__message {
+  margin: 0 auto 0 0;
+  font-size: 13px;
+}
+
+.ew-root .ew-addin-savebar__message[data-kind='info'] {
+  color: var(--ew-color-muted);
+}
+
+.ew-root .ew-addin-savebar__message[data-kind='error'] {
+  color: var(--ew-color-danger);
+}
+
+.ew-root .ew-addin-savebar__message[data-kind='success'] {
+  color: var(--ew-color-success);
+}

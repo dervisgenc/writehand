@@ -28,6 +28,19 @@
 .ew-root .ew-ai-settings__manage > .ew-ai-settings__actions {
   display: contents;
 }
+.ew-root .ew-ai-codex-warning__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ew-space-2);
+}
+.ew-root .ew-ai-codex-warning__title {
+  margin: 0;
+  font-size: var(--ew-font-size-300);
+  font-weight: 600;
+}
+.ew-root .ew-ai-codex-warning p {
+  color: var(--ew-color-text);
+}
 .ew-root .ew-ai-settings__rename {
   flex-basis: 100%;
   margin: var(--ew-space-2) 0 0 var(--ew-space-2);

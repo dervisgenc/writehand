@@ -1,7 +1,6 @@
+import type { AiConnection, HelperClient } from '@writehand/ai-connection';
 import { appError, err, ok } from '@writehand/contracts';
 
-import type { AiConnection } from './ai-connection';
-import type { HelperClient } from './helper-client';
 import type { RuntimeHandlers } from './runtime-messaging';
 
 export function createAiHandlers(options: {

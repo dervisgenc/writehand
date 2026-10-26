@@ -21,13 +21,13 @@
     "wxt": "^0.21.4"
   },
   "dependencies": {
-    "@writehand/ai-chat-completions": "workspace:*",
-    "@writehand/ai-openai": "workspace:*",
+    "@writehand/ai-connection": "workspace:*",
     "@writehand/contracts": "workspace:*",
     "@writehand/core": "workspace:*",
-    "@writehand/email-format": "workspace:*",
-    "@writehand/outlook-web": "workspace:*",
     "@writehand/gmail-web": "workspace:*",
+    "@writehand/locales": "workspace:*",
+    "@writehand/outlook-web": "workspace:*",
+    "@writehand/session": "workspace:*",
     "@writehand/ui": "workspace:*",
     "vue": "^3.5.43",
     "zod": "^4.6.7"

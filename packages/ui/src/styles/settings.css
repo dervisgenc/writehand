@@ -299,3 +299,78 @@
     padding-left: 16px;
   }
 }
+
+/* Shared settings form (SettingsForm.vue): fields, favourite language chips and instruction examples. */
+.ew-root .ew-settings-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 16px;
+}
+.ew-root .ew-settings-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ew-root .ew-settings-form__label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ew-root .ew-settings-form__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ew-root .ew-settings-form__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 28px;
+  padding: 0 4px 0 10px;
+  border: 1px solid var(--ew-color-border);
+  border-radius: 999px;
+  background: var(--ew-color-surface);
+  font-size: 13px;
+}
+.ew-root .ew-settings-form__chip-remove {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ew-color-muted);
+}
+.ew-root .ew-settings-form__chip-remove:hover {
+  background: var(--ew-color-surface-hover);
+  color: var(--ew-color-text);
+}
+.ew-root .ew-settings-form__add {
+  display: flex;
+  gap: 8px;
+  max-width: 420px;
+}
+.ew-root .ew-settings-form__instructions {
+  min-height: 96px;
+  resize: vertical;
+}
+.ew-root .ew-settings-form__examples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.ew-root .ew-settings-form__examples .ew-chip {
+  white-space: normal;
+  text-align: left;
+}
+.ew-root .ew-settings-form__examples .ew-chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

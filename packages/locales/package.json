@@ -1,0 +1,17 @@
+{
+  "name": "@writehand/locales",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "User-facing text in the five interface languages (English, Turkish, German, French, Spanish)",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "vue-tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@writehand/contracts": "workspace:*",
+    "@writehand/ui": "workspace:*"
+  }
+}

@@ -88,6 +88,36 @@ async function replaceFile(source: string, target: string): Promise<void> {
   }
 }
 
+/**
+ * Creates the helper's private data folder if needed, readable only by the user: mode 0700, and
+ * on Windows an ACL for the user and the system (`restrictDirectory`). A folder that could not
+ * be restricted when it was created is removed again, so a later attempt starts over.
+ *
+ * With `restrictExisting`, a folder that already exists is restricted too: one left by an
+ * uninstall without `--delete-data`, by an older version or by another tool may still inherit
+ * access from its parent. It may hold credentials, so it is never removed, and if restricting
+ * it fails it is left as it was.
+ */
+export async function preparePrivateDirectory(
+  directory: string,
+  restrictDirectory: ((directory: string) => Promise<void>) | null,
+  options: { restrictExisting?: boolean } = {},
+): Promise<void> {
+  const created = await mkdir(directory, { recursive: true, mode: 0o700 });
+  if (created !== undefined && restrictDirectory) {
+    try {
+      await restrictDirectory(directory);
+    } catch (error) {
+      // Never keep an unprotected directory: the next attempt creates and restricts it again.
+      await rmdir(directory).catch(() => undefined);
+      throw error;
+    }
+  } else if (restrictDirectory && options.restrictExisting) {
+    await restrictDirectory(directory).catch(() => undefined);
+  }
+  await chmod(directory, 0o700);
+}
+
 /** Private runtime storage, atomic replacement and a cross-process lock for rotating refresh tokens. */
 export function createCredentialStore(
   directory: string,
@@ -97,18 +127,14 @@ export function createCredentialStore(
   } = {},
 ): CredentialStore {
   const file = join(directory, 'credentials.json');
+  // An existing folder is restricted once per process (on Windows that starts two programs),
+  // a newly created one every time it is created.
+  let existingChecked = false;
   const prepare = async () => {
-    const created = await mkdir(directory, { recursive: true, mode: 0o700 });
-    if (created !== undefined && options.restrictDirectory) {
-      try {
-        await options.restrictDirectory(directory);
-      } catch (error) {
-        // Never keep an unprotected directory: the next attempt creates and restricts it again.
-        await rmdir(directory).catch(() => undefined);
-        throw error;
-      }
-    }
-    await chmod(directory, 0o700);
+    await preparePrivateDirectory(directory, options.restrictDirectory ?? null, {
+      restrictExisting: !existingChecked,
+    });
+    existingChecked = true;
   };
   const readState = async (): Promise<CredentialState> => {
     try {
@@ -144,8 +170,24 @@ export function createCredentialStore(
     }
   };
   return {
-    // Even the first read persists the host ID exactly once under the lock.
-    read: () => update((state) => structuredClone(state)),
+    // A read does not rewrite the file: the connection status is read every few seconds. Only the
+    // first read, before the file exists, writes it under the lock, which persists the host ID once.
+    // Writes replace the file in one step, so a read without the lock sees either version whole.
+    read: async () => {
+      await prepare();
+      let saved: z.infer<typeof fileSchema>;
+      try {
+        saved = fileSchema.parse(JSON.parse(await readFile(file, 'utf8')));
+      } catch (error) {
+        if (errorCode(error) !== 'ENOENT') throw error;
+        return update((state) => structuredClone(state));
+      }
+      // A file from helper app 0.1.0 that still holds an API key or its mode is rewritten without them.
+      if (saved.apiKey !== null || saved.apiModel !== null || saved.mode === 'api-key') {
+        return update((state) => structuredClone(state));
+      }
+      return fromFile(saved);
+    },
     update,
   };
 }

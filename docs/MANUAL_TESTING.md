@@ -1,6 +1,6 @@
 # Manual testing
 
-This is the release checklist for real browsers, real Outlook accounts and clean machines. The automated tests run only on synthetic pages; they do not show that Writehand works in real Outlook on the web or that the helper app installs cleanly on a user's computer.
+This is the release checklist for real browsers, real Outlook accounts and clean machines. The automated tests run only on synthetic pages; they do not show that Writehand works in real Outlook on the web or that the helper app installs cleanly on a user's computer. The Outlook add-in has its own checklist and record in [section 7](#7-outlook-add-in).
 
 See also: [Releasing](./RELEASING.md), [Helper app](./HELPER_APP.md), [Development guide](./DEVELOPMENT.md#outlook-on-the-web-selectors).
 
@@ -187,3 +187,81 @@ Gmail support is new. Reading a conversation and finding a compose window are ve
 - [ ] Install again, then uninstall with `--delete-data` (PowerShell: `-DeleteData`): the credentials folder is removed too.
 - [ ] Windows: a few seconds after uninstalling, `%LOCALAPPDATA%\Programs\writehand` is gone and `reg query` finds none of the four keys.
 - [ ] Remove the extension from the browser.
+
+## 7. Outlook add-in
+
+The add-in's automated tests run against an in-memory Office.js ([Outlook add-in → Automated tests](./OUTLOOK_ADDIN.md#automated-tests)); only this checklist shows what a real Outlook does. Check each Outlook application separately: the new Outlook for Windows, classic Outlook for Windows and Outlook on the web differ in their body HTML, their webview and their requirement sets. The [rules](#rules) above apply; a check that was not done in a client is not supported there.
+
+**Setup.** Use a Microsoft 365 work or school mailbox. Two ways to serve the pane are useful:
+
+- **The helper app** (what users get): install the helper app built with the pane inside and turn on its server in one go, as described in [Outlook add-in → Install](./OUTLOOK_ADDIN.md#install). Before a release, put the program in a local folder as a release would (`writehand-windows-x64.zip` from `pnpm addin:build && pnpm ai:sea`, its `SHA256SUMS` line, `install.ps1` and `install-outlook.ps1`), set `$env:WRITEHAND_DOWNLOAD_BASE` to that folder and run `Get-Content -Raw <folder>\install-outlook.ps1 | Invoke-Expression`. Use it for the plans and the helper app checks below.
+- **The sample build** on `https://localhost:3000` (`pnpm addin:certs`, `pnpm addin:build:sample`, `pnpm addin:serve`, then **Add from File** with `apps/outlook-addin/dist-local/manifest.xml`): the three API key providers are replaced with local stand-ins; any key of ten or more characters connects, every result is a labeled sample of its input (for example "… (revised sample)"), and nothing leaves the computer. Use it to check what Outlook does without an AI account.
+
+Both manifests carry the same add-in ID: remove one in **Custom Addins** before adding the other.
+
+**Automating the checks.** The new Outlook's webviews cannot be reached with a debugging port (`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` is ignored), so a script has to work through Windows UI Automation. In read mode, never list the pane's texts or checkbox names: the context preview shows the open email's sender and text. Query controls by their fixed names only, and report counts and yes/no answers. Set text fields through UI Automation and read them back instead of sending keystrokes, which can land in another field. Check colors by sampling a few pixels of the pane, not by saving screenshots.
+
+**Checklist** (per client):
+
+- [ ] **Install:** **Add from File** accepts `manifest.xml`; after restarting Outlook, **Writehand** is under **Apps** on a received message (a button) and in a new message (a menu with **Revise**, **Translate**, **Write** and **Open Writehand**).
+- [ ] **One-command install:** with the server off, `install-outlook.ps1` installs the helper app, shows Windows' certificate warning once, starts the server, opens <https://aka.ms/olksideload> in the default browser and leaves the manifest's path on the clipboard; pasting it into **Add from File** works. Run it again: no warning, no browser, "on already". Declining the warning leaves the helper app installed and says to run the command again.
+- [ ] **Menu commands:** in a draft, select made-up words and choose **Writehand → Revise**: the pane opens and shows the revised selection without another click; nothing is written before **Apply to draft**. **Translate** opens the pane on the selection and waits for the language; **Write** in an empty new message waits for the instruction, in a reply draft it is a reply. With the pane already open, choose another command and note whether Outlook reloads the pane with it.
+- [ ] **First run:** the pane loads without a certificate or Content Security Policy error. Connect a key: "… key saved, encrypted in this Outlook app.", the status is **Ready** and the key field is cleared. **Revise the sample** works; **Start** opens the panel, which says which key it uses.
+- [ ] **Key after restart:** close and reopen Outlook; the panel still uses the key.
+- [ ] **New message:** the target is the open draft (not a reply) and the operations are **Write**, **Revise** and **Translate**.
+- [ ] **Empty draft:** **Write** into an empty new message; the text appears once, above the signature if there is one.
+- [ ] **Whole body:** in a new message without a signature, **Revise** the whole text and apply it; **Undo last apply** restores it. Note any notification Outlook shows.
+- [ ] **Selection:** select a few words in a draft, **Take selected text**, **Revise**, then click **Apply to draft** in the pane. Only the selection changes; nothing is inserted at the top of the body (risk 1 in the guide).
+- [ ] **Table:** **Change the result → Make a table**, then apply it to a new message: the table keeps its borders, header shading and padding (risk 2).
+- [ ] **Read mode:** open a received email and the pane from **Apps**. **Revise** a made-up sentence (conversation context off), then **Open a reply with this text**: a reply draft opens with the text above the quote, and its subject is a reply's. Discard the draft.
+- [ ] **Pinning:** pin the pane on a received email and switch to two other emails: the pane stays open, the context follows each email, and a result made for the first email does not offer to reply to the second.
+- [ ] **Theme:** switch Outlook between light and dark (**Settings → General → Appearance**): the pane follows without being reopened. Switch back.
+- [ ] **Copy:** **Copy** puts the result on the clipboard and says "Copied to clipboard." (Save and restore the clipboard if a script does this.)
+- [ ] **Provider** (real key): connecting lists the provider's models; a generation succeeds; the provider is the only host besides the add-in's own and Microsoft's.
+- [ ] **Helper app server:** `writehand outlook enable` shows Windows' security warning for "Writehand local Outlook add-in (*user*)"; after **Yes** the certificate is under the current user's trusted roots (`certmgr.msc`), `writehand outlook status` reports the server, no console window is open, and `outlook-manifest.xml` is next to the program. Declining the warning changes nothing.
+- [ ] **Plans in the pane:** the pane loads from `https://localhost:41537` and shows the helper app's method (for example "Using ChatGPT plan"). Revise a made-up sentence with the ChatGPT plan, then switch to the Claude plan in the settings and revise again; apply one result to an empty draft. Without a connected account, **Continue with ChatGPT** opens the system browser and the pane follows the sign-in.
+- [ ] **Server restarts:** with the pane open, run `writehand.exe install` again (the update path) and end the server process, then start the `Writehand Outlook` sign-in command; each time a new server runs without a window and the open pane still reaches it.
+- [ ] **Off:** `writehand outlook disable` asks to remove the certificate, removes the sign-in entry, the copy and the files; the pane no longer loads. `writehand status` in a browser still works (native messaging).
+- [ ] **Pop-out draft:** open the pane in a draft in its own window and write once.
+- [ ] **Nothing sent:** **Sent Items** holds none of the test drafts; discard every test draft and reply.
+
+Record each run:
+
+| Date | Client and version | Webview | Windows | Account | Language | Build | Provider | Checks passed | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-23 | New Outlook 1.2026.1013.100 | WebView2 155.0.4283.62 | 11 Pro 10.0.26200 | Microsoft 365 work or school | English | `addin:build:sample` from `https://localhost:3000` | Sample (no network) | Install, first run, key after restart, new message, empty draft, whole body and undo, selection, table, read mode, pinning, theme, copy, nothing sent | See below |
+| 2026-10-25 | New Outlook (same) | WebView2 155 | 11 Pro 10.0.26200 | Microsoft 365 work or school | English | Helper app 0.1.0 built from `feat/outlook-addin` (`ai:sea`), `https://localhost:41537` | ChatGPT plan, Claude plan (helper app) | Helper app server, plans in the pane, empty draft, server restarts, nothing sent | See below |
+
+**Run of 2026-10-23, new Outlook for Windows.** Driven by a UI Automation script; one cropped screenshot of a made-up test draft was viewed for the table check and deleted.
+
+Verified in this client:
+
+- The manifest was accepted by **Add from File** in Outlook on the web. **Writehand** appeared under **Apps** in new messages after the first restart, and on received emails by the next restart (not checked in between).
+- The pane loaded from `https://localhost:3000` without a loopback exemption, and the Content Security Policy did not block Office.js.
+- The sample key connected and was cleared from the field; after closing and reopening Outlook the panel still used it.
+- **The new Outlook gives a new message a conversation ID before it is saved**, unlike what the reference says; the pane took every new message for a reply. Fixed by asking for the compose type first, then checked again: a new message is a new message.
+- `prependAsync` wrote into an empty draft once; `setAsync` replaced a new message's body and **Undo last apply** restored it; Outlook showed no notification.
+- A selection was replaced in place after clicking **Apply to draft** in the pane; nothing went to the top of the body (risk 1 did not occur).
+- A table written into a draft kept its inline styles: borders, header shading and padding (risk 2 did not occur in this client).
+- **Open a reply with this text** opened a reply draft in its own window, starting with the result, with a reply subject; it was closed and discarded unsent.
+- A pinned pane stayed open while switching between received emails and read each one; the reply option for the previous email's result was gone. Switching to a draft's tab closed the pane (compose and read panes are separate), and closing the pane by hand unpinned it.
+- The pane followed Outlook's theme without reopening: background `#FAF9F8` in light and `#212121` in dark, Office's colors rather than Writehand's defaults. The setting was switched back to light.
+- **The Clipboard API is refused in the add-in's frame**, even on a real mouse click. Fixed by falling back to the copy command; then **Copy** put the result on the clipboard and the pane said "Copied to clipboard.".
+- **Sent Items** held none of the test items afterwards; the three test drafts and the reply draft were discarded (they are in **Deleted Items**).
+
+Not checked in this run: a real provider (connecting a key, models, a generation, CORS from the pane), **Draft reply** with a received email as context, translation, a pop-out draft with the pane in it, a reply draft's quote and signature boundary, a non-empty reply draft, Outlook.com accounts, other interface languages, classic Outlook for Windows (not installed) and Outlook on the web.
+
+**Run of 2026-10-25, new Outlook for Windows, the helper app serving the pane.** Driven by a UI Automation script; made-up sentences only, no email context. Before it, a probe page served on `https://localhost:3000` measured what the pane may do: it is a frame of `https://outlook.office.com`; `local-network-access`, `loopback-network` and `local-network` are not allowed by its permissions policy and their permission state is `denied`; from a `localhost` page, requests to `http://127.0.0.1`, `https://localhost` and a WebSocket there all succeeded without a prompt.
+
+Verified in this client:
+
+- `writehand outlook enable` added the authority to the current user's trusted roots, started `writehand-outlook.exe` without a window, added the sign-in value and wrote the manifest. It finished within four seconds: Windows showed its security warning for the certificate and the tester selected **Yes** (the script did not capture the dialog). Over TLS with only that authority trusted, the server served the pane with its token and `frame-ancestors`, and refused requests without the token, from another origin, and control requests without the control token (403).
+- After the manifest was added with **Add from File** and Outlook restarted, the pane loaded from `https://localhost:41537` and showed "Using ChatGPT plan": the helper app's connected account, with no setup in the pane.
+- The ChatGPT plan revised a made-up sentence in about 3 seconds; **Apply to draft** wrote the result into the empty test draft once. Switched to the Claude plan in the pane's settings ("Connected · Ready to generate text"), the Claude plan revised another made-up sentence in about 4 seconds. Switched back to the ChatGPT plan afterwards.
+- `writehand.exe install` again (the update path) handed the server over to a new process; ending the server and starting the sign-in command started a new one, without a window. Native messaging (`HOST_INFO`, `AI_STATUS`) still answered from the same program.
+- **An open pane lost the helper app after a server restart**: each start wrote a new token into the page, so the open pane's requests were refused and it said the helper app did not answer. Fixed by keeping the token across restarts (`bridge.token`); after reinstalling, a restart with the pane open left it connected.
+- **Sent Items** held no test item afterwards; the test draft was discarded.
+
+Not checked in this run: a ChatGPT sign-in started from the pane, an API key from the pane, signing out of Windows and in again (the sign-in command was started by hand instead), `writehand outlook disable` and `uninstall` with the server on, classic Outlook, and an install on a clean machine.
+
+**Later on 2026-10-25, the one-command install's update path.** On the same computer, with the server already on: `install-outlook.ps1` from a local release folder (Windows PowerShell 5.1, `WRITEHAND_DOWNLOAD_BASE`) checked the checksum, installed the new build, restarted the server with it and said the server was on already, without a certificate warning or a browser window, in about four seconds. The restarted server served `taskpane.html?command=revise` with its token over the trusted certificate. Not checked yet: the first run of that command (warning, browser, clipboard) and the draft's **Writehand** menu in Outlook, which needs the new manifest added again.

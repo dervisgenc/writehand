@@ -37,4 +37,25 @@ describe('describeContext', () => {
       { kind: 'display-order-used' },
     ]);
   });
+
+  it('says that only the open item was read when the context comes from an Office add-in', () => {
+    const snapshot = thread([message('m1', 0, [body('Bir')])], {
+      coverage: {
+        source: 'item-body',
+        status: 'partial',
+        readableMessageCount: 1,
+        knownUnreadableMessageCount: null,
+        reasons: [],
+      },
+    });
+    const context = buildContext(
+      { expectedThread: threadA, snapshot, selection: { included: [], excluded: [] }, includedBlocks: [] },
+      testDependencies(),
+    );
+    if (!context.ok) throw new Error('unexpected error');
+
+    const notices = describeContext(context.value);
+    expect(notices).toContainEqual({ kind: 'open-item-only' });
+    expect(notices).not.toContainEqual({ kind: 'coverage-unverified' });
+  });
 });

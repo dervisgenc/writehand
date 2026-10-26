@@ -2,7 +2,7 @@
 // video. The extension's demo build runs in the demo mailbox with a fake helper app;
 // nothing connects to a real account or to an AI.
 //
-// Usage: pnpm store:assets [icons] [screenshots] [promo] [video] [--scene=01-reply]
+// Usage: pnpm store:assets [icons] [addin-icons] [screenshots] [promo] [video] [--scene=01-reply]
 // Without a step, everything is generated. Output goes under store/. The video needs
 // ffmpeg (libx264) on PATH; if it lives elsewhere, point the FFMPEG environment variable to it.
 import { execFileSync } from 'node:child_process';
@@ -21,13 +21,13 @@ import {
   socialPreview,
   videoThumbnail,
 } from './frames.mjs';
-import { iconDataUri, renderIcons } from './icons.mjs';
+import { ADDIN_OUTPUTS, iconDataUri, renderIcons } from './icons.mjs';
 import { launch, ROOT, startServer, STORE_DIR, WORK_DIR } from './harness.mjs';
 import { openScene, SCENES } from './scenes.mjs';
 import { RESPONSES } from './story.mjs';
 import { recordVideo } from './video.mjs';
 
-const STEPS = ['icons', 'screenshots', 'promo', 'video'];
+const STEPS = ['icons', 'addin-icons', 'screenshots', 'promo', 'video'];
 const RAW_DIR = resolve(WORK_DIR, 'raw');
 const SCREENSHOT_DIR = resolve(STORE_DIR, 'screenshots/en');
 const PROMO_DIR = resolve(STORE_DIR, 'promo');
@@ -145,8 +145,10 @@ const browser = await chromium.launch();
 try {
   if (steps.includes('icons')) {
     for (const path of await renderIcons(browser)) console.log(`✓ ${short(path)}`);
+  } else if (steps.includes('addin-icons')) {
+    for (const path of await renderIcons(browser, ADDIN_OUTPUTS)) console.log(`✓ ${short(path)}`);
   }
-  if (steps.some((step) => step !== 'icons')) buildDemoExtension();
+  if (steps.some((step) => step !== 'icons' && step !== 'addin-icons')) buildDemoExtension();
   if (steps.includes('screenshots') || steps.includes('promo')) {
     const needed = steps.includes('screenshots')
       ? scenes

@@ -4,7 +4,7 @@ This note is for add-on store reviewers and anyone who wants to reproduce the re
 
 ## Requirements
 
-- Node.js 24 LTS
+- Node.js 24 LTS (`.nvmrc`)
 - pnpm 12.11.2 (`npm install -g pnpm@12.11.2`; the version is pinned in `package.json` → `packageManager`)
 - Linux, macOS or Windows; no other system tools are needed for the extension
 
@@ -24,20 +24,25 @@ This writes, under `apps/browser-extension/.output/`:
 
 The build is WXT (Vite) with Vue 3; nothing is downloaded at run time and no code is minified away from its source beyond Vite's standard production build. `pnpm verify:packages` checks permissions, content script matches and that no development code is included.
 
+The build is deterministic: building the same commit twice gives byte-identical files. To compare a rebuild with a store package, unpack the package and compare it with the unpacked build, for example `unzip -q writehand-<version>-firefox.zip -d store-package && diff -r store-package apps/browser-extension/.output/firefox-mv3`.
+
+The source archive is the whole repository. The extension needs only `apps/browser-extension` and the `packages/` it depends on; `apps/ai-companion` (the helper app) and `apps/outlook-addin` (the Outlook add-in) are separate programs that are not part of the extension packages.
+
 ## Helper app
 
 For the ChatGPT and Claude plans, the extension talks to a small helper app on the user's computer through native messaging (`com.dervisgenc.writehand`); API keys need no helper app. Its source is in `apps/ai-companion`; release builds are single programs made with Node.js's single executable application support:
 
 ```sh
-pnpm ai:sea   # run with Node.js 24 on each target system
+pnpm addin:build   # the Outlook add-in's task pane, which the program carries
+pnpm ai:sea        # run with Node.js 24 on each target system
 ```
 
-The program and its third-party licenses are written to `apps/ai-companion/dist/release/`.
+The program and its third-party licenses (including the packages inside the add-in's task pane) are written to `apps/ai-companion/dist/release/`. The build stops if the add-in has not been built.
 
 ## Where things are
 
 | Path | Contents |
 | --- | --- |
-| `apps/browser-extension` | Extension entry points, settings, welcome wizard, locales |
+| `apps/browser-extension` | Extension entry points, settings, welcome wizard |
 | `packages/*` | Shared contracts, core logic, UI components, Outlook connector, email formatting, AI providers |
 | `apps/ai-companion` | Helper app (native messaging host, installer, updater) |

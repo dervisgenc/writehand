@@ -24,7 +24,7 @@ See [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) for the architecture, all comma
 
 - Keep each pull request focused on one change and make sure `pnpm check` passes. CI also runs on Linux, macOS and Windows and builds the helper app for every supported system.
 - Add or update tests for behavior changes. Tests use synthetic Outlook and Gmail pages and made-up emails (`tests/fixtures/`).
-- User-facing text lives in `apps/browser-extension/src/locales/` and must be provided in all five languages (English, Turkish, German, French, Spanish).
+- User-facing text lives in `packages/locales/src/` and must be provided in all five languages (English, Turkish, German, French, Spanish).
 - Write commit messages in English using [Conventional Commits](https://www.conventionalcommits.org/), for example `fix(outlook-web): keep the selection after a re-render`.
 - Add user-visible changes to `CHANGELOG.md` under `[Unreleased]`.
 

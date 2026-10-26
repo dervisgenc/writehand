@@ -10,6 +10,8 @@ import { createCredentialStore } from './credential-store';
 import { DEFAULT_HOST_CONFIG, hostEnvironment, parseHostConfig, type HostConfig } from './host-config';
 import { allowedExtensions, commandPath, planInstall, planUninstall } from './install-plan';
 import { hostPlatform, type HostPlatform } from './platform';
+import { disableOutlook, installOutlook, refreshOutlook, systemIo } from './outlook';
+import type { AddinFile } from './outlook-server';
 import { readRegistration, registeredBrowsers } from './registrations';
 import { HOST_VERSION } from './version';
 
@@ -81,8 +83,14 @@ export async function install(
     readonly development: boolean;
     /** The running program: the single-file build, or the bundled script run by Node.js. */
     readonly source: { readonly program: string } | { readonly script: string; readonly node: string };
+    /** The Outlook add-in's files this program carries. */
+    readonly addin: ReadonlyMap<string, AddinFile>;
+    /** Also turns on the Outlook add-in server (`install --outlook`). */
+    readonly outlook: boolean;
   },
 ): Promise<void> {
+  if (options.outlook && platform.outlook === null)
+    throw new Error('The Outlook add-in server is available on Windows only so far.');
   const node = 'node' in options.source ? options.source.node : null;
   if (options.development !== (node !== null))
     throw new Error(
@@ -96,8 +104,11 @@ export async function install(
     platform.claudeLocations.filter((location) => !location.split(/[\\/]/).includes('node_modules')),
   );
   const nodeFound = node ?? (await firstExisting(platform.nodeLocations));
+  const previous = await readHostConfig(platform);
   const config: HostConfig = {
     ...DEFAULT_HOST_CONFIG,
+    // `writehand outlook enable` stays on across updates.
+    outlook: previous.outlook,
     development: options.development,
     claudePath: claude.ok && claude.value.args.length === 0 ? claude.value.file : null,
     claudeConfigDir: process.env.CLAUDE_CONFIG_DIR || null,
@@ -126,6 +137,8 @@ export async function install(
   }
   for (const entry of plan.registry) await platform.registry?.set(entry.key, entry.value);
   await removeLeftovers(platform);
+  // The Outlook add-in server, if it is on, now runs this version.
+  await refreshOutlook({ platform, config, files: options.addin }, systemIo);
 
   const claudeState =
     config.claudePath ??
@@ -145,6 +158,15 @@ export async function install(
       'Reload the extension or restart the browser, then open its settings.',
     ].join('\n'),
   );
+  if (options.outlook) {
+    print('');
+    await installOutlook({ platform, config, files: options.addin }, systemIo).catch((error: unknown) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `The helper app is installed, but the Outlook add-in server is not on. ${reason} Run the same command again to retry.`,
+      );
+    });
+  }
 }
 
 /** Signs out of every ChatGPT account (revoking its session where possible) and deletes the credentials. */
@@ -174,6 +196,10 @@ export async function uninstall(
   platform: HostPlatform,
   options: { readonly deleteData: boolean; readonly runningProgram: string | null },
 ): Promise<void> {
+  const config = await readHostConfig(platform);
+  // Stops the Outlook add-in server and removes its certificate before the program goes.
+  if (config.outlook !== null && platform.outlook !== null)
+    await disableOutlook({ platform, config, files: new Map() }, systemIo);
   const plan = planUninstall(platform);
   for (const key of plan.registryKeys) await platform.registry?.remove(key);
   for (const file of plan.files) await rm(file, { force: true });
@@ -224,6 +250,9 @@ export async function status(platform: HostPlatform, config: HostConfig): Promis
       `Program: ${installed ? program : `not installed (${program})`}`,
       `Browsers: ${browsers.length > 0 ? browsers.join(', ') : 'none'}`,
       `Claude Code: ${claudeState}`,
+      ...(platform.outlook === null
+        ? []
+        : [`Outlook add-in: ${config.outlook === null ? 'off' : 'on (writehand outlook status)'}`]),
     ].join('\n'),
   );
 }

@@ -16,6 +16,7 @@ export const ICON_PATHS = {
   close: ['M5.5 5.5l9 9M14.5 5.5l-9 9'],
   chevronDown: ['M6 8l4 4 4-4'],
   chevronRight: ['M8 6l4 4-4 4'],
+  back: ['M8.5 5.5L4 10l4.5 4.5', 'M4.5 10H16'],
   send: ['M3.5 9.6L16.5 4l-5.6 13-2.2-5.2-5.2-2.2z', 'M8.7 11.8l3.3-3.3'],
   copy: [
     'M7.5 6.5h7a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z',

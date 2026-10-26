@@ -1,10 +1,13 @@
 import {
   appError,
   err,
+  isComposerTarget,
+  isSameThread,
   ok,
   type AppError,
   type ApplyRequest,
   type ApplyTarget,
+  type ReplyApplyTarget,
   type Result,
 } from '@writehand/contracts';
 
@@ -22,12 +25,20 @@ const STALE_REASON_ERRORS: Record<StaleReason, AppError['code']> = {
 
 /** Always produces the same ID for the same preview revision and target. */
 export function applyOperationIdFor(preview: SessionPreview, target: ApplyTarget): string {
-  return [
-    preview.requestId,
-    preview.previewRevision,
-    target.composerRef.composerKey,
-    target.expectedRevision,
-  ].join(':');
+  const place = isComposerTarget(target)
+    ? [target.composerRef.composerKey, target.expectedRevision]
+    : ['reply', target.messageKey, target.expectedThreadRevision];
+  return [preview.requestId, preview.previewRevision, ...place].join(':');
+}
+
+/** A new reply belongs to the message and conversation content the result was made from. */
+function isReplyTargetCurrent(state: SessionState, target: ReplyApplyTarget): boolean {
+  return (
+    state.thread !== null &&
+    state.threadSnapshot !== null &&
+    isSameThread(state.thread, target.threadRef) &&
+    state.threadSnapshot.revision === target.expectedThreadRevision
+  );
 }
 
 function replacedText(state: SessionState): string | null {
@@ -48,20 +59,24 @@ export function validateApply(state: SessionState): Result<ApplyRequest, AppErro
   if (preview.formRevision !== state.formRevision) {
     return err(appError('PREVIEW_STALE', { field: 'preview' }));
   }
-  if (state.binding.kind === 'received-message') {
-    return err(appError('WRITE_UNSUPPORTED', { field: 'target' }));
-  }
-
   const target = effectiveApplyTarget(state);
   if (target === null) {
-    return err(appError('TARGET_MISSING', { field: 'target' }));
+    return err(
+      appError(state.binding.kind === 'received-message' ? 'WRITE_UNSUPPORTED' : 'TARGET_MISSING', {
+        field: 'target',
+      }),
+    );
   }
   if (state.staleReason !== null) {
     return err(appError(STALE_REASON_ERRORS[state.staleReason], { field: 'target' }));
   }
-  if (state.targetComposerRevision !== target.expectedRevision) {
-    // A revision mismatch is never resolved by updating the expected revision.
-    return err(appError('TARGET_CHANGED', { field: 'target' }));
+  if (isComposerTarget(target)) {
+    if (state.targetComposerRevision !== target.expectedRevision) {
+      // A revision mismatch is never resolved by updating the expected revision.
+      return err(appError('TARGET_CHANGED', { field: 'target' }));
+    }
+  } else if (!isReplyTargetCurrent(state, target)) {
+    return err(appError('THREAD_CHANGED', { field: 'target' }));
   }
 
   if (preview.text.trim().length === 0) {

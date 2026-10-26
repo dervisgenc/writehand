@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { DEFAULT_SETTINGS, REPOSITORY_URL, type Settings } from '@writehand/contracts';
+import { textFor, uiLanguageFor } from '@writehand/locales';
+import { parseStoredSettings, SETTINGS_STORAGE_KEY } from '@writehand/session';
 import { AppIcon, ExtensionPage, provideUiText, StepList } from '@writehand/ui';
 import { computed, onMounted, onUnmounted, ref, shallowRef, useId, watch, watchEffect } from 'vue';
 
 import { GMAIL_WEB_START, OUTLOOK_WEB_START } from '../../src/bootstrap/supported-sites';
-import { textFor, uiLanguageFor } from '../../src/locales';
 import AiSettings from '../../src/pages/AiSettings.vue';
 import HelperInstall from '../../src/pages/HelperInstall.vue';
 import {
@@ -13,7 +14,6 @@ import {
   openOptionsPage,
 } from '../../src/platform/extension-browser';
 import { fetchSettings, generateText } from '../../src/platform/extension-client';
-import { parseStoredSettings, SETTINGS_STORAGE_KEY } from '../../src/platform/settings-store';
 
 /**
  * Welcome wizard: the two ways to connect, setting up the chosen method (with the helper app's

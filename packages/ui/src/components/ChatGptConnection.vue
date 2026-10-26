@@ -11,8 +11,35 @@ import ModelSelect from './ModelSelect.vue';
 /** ChatGPT plan accounts, kept by the helper app. */
 const props = defineProps<{ helper: HelperStatus; text: AiText; busy: boolean }>();
 const emit = defineEmits<{ command: [command: AiCommand] }>();
-const ids = { account: useId(), accountHint: useId(), welcome: useId(), codexHint: useId() };
+const ids = {
+  account: useId(),
+  accountHint: useId(),
+  welcome: useId(),
+  codexHint: useId(),
+  codexWarning: useId(),
+};
 const welcome = useTemplateRef<HTMLDialogElement>('welcome');
+/**
+ * The Codex sign-in is offered for work accounts that Sign in with ChatGPT does not serve. It uses a
+ * client OpenAI has not published for other apps, so the risk is shown and confirmed before it starts.
+ */
+const codexWarningOpen = ref(false);
+const codexContinue = useTemplateRef<HTMLButtonElement>('codexContinue');
+const codexButton = useTemplateRef<HTMLButtonElement>('codexButton');
+async function showCodexWarning() {
+  codexWarningOpen.value = true;
+  await nextTick();
+  codexContinue.value?.focus();
+}
+async function closeCodexWarning() {
+  codexWarningOpen.value = false;
+  await nextTick();
+  codexButton.value?.focus();
+}
+function startCodexSignIn() {
+  codexWarningOpen.value = false;
+  emit('command', { action: 'connect', accountId: null, signIn: 'codex' });
+}
 const selectedId = ref<string | null>(null);
 const active = computed(() =>
   props.helper.accounts.find((account) => account.id === props.helper.activeAccountId),
@@ -121,16 +148,45 @@ watch(
       {{ text.addAccount }}
     </button>
     <button
+      ref="codexButton"
       type="button"
-      class="ew-btn"
+      class="ew-btn ew-ai-codex"
       :disabled="busy"
       :aria-describedby="ids.codexHint"
-      @click="emit('command', { action: 'connect', accountId: null, signIn: 'codex' })"
+      :aria-expanded="codexWarningOpen"
+      :aria-controls="ids.codexWarning"
+      @click="codexWarningOpen ? closeCodexWarning() : showCodexWarning()"
     >
       {{ text.codexConnect }}
     </button>
   </div>
   <p :id="ids.codexHint" class="ew-muted">{{ text.codexHint }}</p>
+  <section
+    v-if="codexWarningOpen"
+    :id="ids.codexWarning"
+    class="ew-alert ew-alert--warning ew-ai-codex-warning"
+    :aria-labelledby="`${ids.codexWarning}-title`"
+    @keydown.esc.stop="closeCodexWarning()"
+  >
+    <div class="ew-ai-codex-warning__body">
+      <h3 :id="`${ids.codexWarning}-title`" class="ew-ai-codex-warning__title">
+        {{ text.codexWarningTitle }}
+      </h3>
+      <p v-for="line in text.codexWarning" :key="line">{{ line }}</p>
+      <div class="ew-ai-settings__actions">
+        <button
+          ref="codexContinue"
+          type="button"
+          class="ew-btn ew-btn--primary"
+          :disabled="busy"
+          @click="startCodexSignIn()"
+        >
+          {{ text.codexWarningContinue }}
+        </button>
+        <button type="button" class="ew-btn" @click="closeCodexWarning()">{{ text.cancel }}</button>
+      </div>
+    </div>
+  </section>
   <div v-if="selected" class="ew-ai-settings__manage">
     <button
       v-if="selected.connected"

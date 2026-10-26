@@ -1,5 +1,6 @@
 import {
   appError,
+  isComposerTarget,
   isSameComposer,
   isSameThread,
   type AppError,
@@ -96,7 +97,7 @@ function hasFormChanges(form: SessionForm, changes: Partial<SessionForm>): boole
 /** The editor the target or source binding points to. */
 function trackedComposer(state: SessionState): ComposerRef | null {
   const target = effectiveApplyTarget(state);
-  if (target !== null) {
+  if (target !== null && isComposerTarget(target)) {
     return target.composerRef;
   }
   const { binding } = state;
@@ -172,7 +173,8 @@ function reduceMailEvent(state: SessionState, event: MailEvent): SessionState {
         // The extension's own write; the result is handled by `apply-finished`.
         return next;
       }
-      const expected = effectiveApplyTarget(state)?.expectedRevision ?? null;
+      const target = effectiveApplyTarget(state);
+      const expected = target !== null && isComposerTarget(target) ? target.expectedRevision : null;
       const isOwnWrite = state.lastChange?.composerRevisionAfter === event.revision;
       if (event.revision !== expected && !isOwnWrite && state.staleReason === null) {
         return markStale(next, 'composer-changed');
@@ -220,18 +222,21 @@ function reduceMailEvent(state: SessionState, event: MailEvent): SessionState {
 function afterUndo(state: SessionState, revision: number): SessionState {
   const next: SessionState = { ...state, lastChange: null, targetComposerRevision: revision };
   const target = effectiveApplyTarget(state);
-  if (target === null) {
+  if (target === null || !isComposerTarget(target)) {
     return next;
   }
   if (target.mode === 'replace-selection') {
     return state.staleReason === null ? markStale(next, 'selection-invalid') : next;
   }
+  const { explicitTarget } = state;
   return {
     ...next,
     binding:
       state.binding.kind === 'draft' ? { ...state.binding, composerRevision: revision } : state.binding,
     explicitTarget:
-      state.explicitTarget === null ? null : { ...state.explicitTarget, expectedRevision: revision },
+      explicitTarget === null || !isComposerTarget(explicitTarget)
+        ? explicitTarget
+        : { ...explicitTarget, expectedRevision: revision },
   };
 }
 
@@ -245,11 +250,11 @@ function rebindComposer(state: SessionState, ref: ComposerRef): SessionState {
         ? { ...binding, composerRef: ref }
         : binding,
     explicitTarget:
-      explicitTarget !== null && matches(explicitTarget.composerRef)
+      explicitTarget !== null && isComposerTarget(explicitTarget) && matches(explicitTarget.composerRef)
         ? { ...explicitTarget, composerRef: ref }
         : explicitTarget,
     lastChange:
-      lastChange !== null && matches(lastChange.composerRef)
+      lastChange !== null && lastChange.composerRef !== null && matches(lastChange.composerRef)
         ? { ...lastChange, composerRef: ref }
         : lastChange,
   };
@@ -438,16 +443,25 @@ export function reduceSession(state: SessionState, event: SessionEvent): Session
         },
       });
 
-    case 'target-bound':
-      if (state.binding.kind === 'received-message' || state.phase.status === 'applying') {
+    case 'target-bound': {
+      const { target } = event;
+      if (state.phase.status === 'applying') {
+        return state;
+      }
+      if (!isComposerTarget(target)) {
+        // A new reply overwrites nothing, so any source may use it; a stale conversation stays stale.
+        return { ...state, explicitTarget: target };
+      }
+      if (state.binding.kind === 'received-message') {
         return state;
       }
       return {
         ...state,
-        explicitTarget: event.target,
-        targetComposerRevision: event.target.expectedRevision,
+        explicitTarget: target,
+        targetComposerRevision: target.expectedRevision,
         staleReason: null,
       };
+    }
 
     case 'apply-started':
       if (state.phase.status !== 'preview') {
@@ -479,7 +493,7 @@ export function reduceSession(state: SessionState, event: SessionEvent): Session
         applyOperationId: event.applyOperationId,
         requestId: state.preview.requestId,
         previewRevision: state.preview.previewRevision,
-        composerRef: target.composerRef,
+        composerRef: isComposerTarget(target) ? target.composerRef : null,
       };
       if (outcome.status === 'uncertain') {
         // The same write is never retried automatically; the preview is kept.
@@ -497,7 +511,7 @@ export function reduceSession(state: SessionState, event: SessionEvent): Session
           undoId: outcome.undoId,
           composerRevisionAfter: outcome.composerRevision,
         },
-        targetComposerRevision: outcome.composerRevision,
+        targetComposerRevision: outcome.composerRevision ?? state.targetComposerRevision,
         phase: { status: 'applied' },
       };
     }

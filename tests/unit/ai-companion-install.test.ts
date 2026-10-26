@@ -223,6 +223,49 @@ describe('Installation plan', () => {
       registry.remove('HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\other.host'),
     ).rejects.toThrow('Not a registry key of this helper');
   });
+
+  it('writes only its own value in the sign-in key, for the Outlook add-in server', async () => {
+    const registry = windows().registry!;
+    const run = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
+    await expect(registry.setValue(run, 'OneDrive', 'x')).rejects.toThrow(
+      'Not a registry value of this helper',
+    );
+    await expect(registry.removeValue(run, 'OneDrive')).rejects.toThrow(
+      'Not a registry value of this helper',
+    );
+    await expect(
+      registry.setValue(
+        'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce',
+        'Writehand Outlook',
+        'x',
+      ),
+    ).rejects.toThrow('Not a registry value of this helper');
+    expect(windows().outlook).toEqual({
+      windowlessProgramPath: 'C:\\Users\\Ada\\AppData\\Local\\Programs\\writehand\\writehand-outlook.exe',
+      directory: 'C:\\Users\\Ada\\AppData\\Local\\writehand\\outlook',
+      manifestPath: 'C:\\Users\\Ada\\AppData\\Local\\Programs\\writehand\\outlook-manifest.xml',
+      autostart: { key: run, name: 'Writehand Outlook' },
+      trustAuthority: expect.any(Function),
+      untrustAuthority: expect.any(Function),
+      copyToClipboard: expect.any(Function),
+    });
+    // The path travels in the environment, never as part of the PowerShell command.
+    const copy = windows().outlook!.copyToClipboard('C:\\Users\\Derviş\\outlook-manifest.xml');
+    expect(copy).toMatchObject({
+      file: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+      args: ['-NoProfile', '-NonInteractive', '-Command', 'Set-Clipboard -Value $env:WRITEHAND_CLIPBOARD'],
+    });
+    expect(copy.env?.WRITEHAND_CLIPBOARD).toBe('C:\\Users\\Derviş\\outlook-manifest.xml');
+    expect(windows().outlook!.trustAuthority('C:\\ca.crt')).toEqual({
+      file: 'C:\\Windows\\System32\\certutil.exe',
+      args: ['-user', '-addstore', 'Root', 'C:\\ca.crt'],
+    });
+    expect(windows().outlook!.untrustAuthority('AB12')).toEqual({
+      file: 'C:\\Windows\\System32\\certutil.exe',
+      args: ['-user', '-delstore', 'Root', 'AB12'],
+    });
+    expect(hostPlatform('linux', {}, '/home/ada').outlook).toBe(null);
+  });
 });
 
 describe('Command line', () => {
@@ -240,7 +283,13 @@ describe('Command line', () => {
   it('reads the commands and their options', () => {
     expect(
       parseCommand(['install', `--extension-id=${CHROMIUM_ID}`, '--dev', '--extension-id=x@y'], true),
-    ).toEqual({ kind: 'install', extensionIds: [CHROMIUM_ID, 'x@y'], development: true });
+    ).toEqual({ kind: 'install', extensionIds: [CHROMIUM_ID, 'x@y'], development: true, outlook: false });
+    expect(parseCommand(['install', '--outlook'], true)).toEqual({
+      kind: 'install',
+      extensionIds: [],
+      development: false,
+      outlook: true,
+    });
     expect(parseCommand(['uninstall', '--delete-data'], true)).toEqual({
       kind: 'uninstall',
       deleteData: true,
@@ -440,8 +489,20 @@ describe('On this computer', () => {
       await writeFile(script, REPORTING_SCRIPT);
       const platform = hostPlatform(process.platform, { PATH: '' }, join(root, 'home'));
       const source = { script, node: process.execPath };
-      await install(platform, { extensionIds: [CHROMIUM_ID], development: true, source });
-      await install(platform, { extensionIds: [], development: true, source });
+      await install(platform, {
+        extensionIds: [CHROMIUM_ID],
+        development: true,
+        source,
+        addin: new Map(),
+        outlook: false,
+      });
+      await install(platform, {
+        extensionIds: [],
+        development: true,
+        source,
+        addin: new Map(),
+        outlook: false,
+      });
 
       const chrome = JSON.parse(await readFile(platform.registration('chrome').manifest, 'utf8'));
       expect(chrome).toMatchObject({
@@ -449,9 +510,14 @@ describe('On this computer', () => {
         allowed_origins: [`chrome-extension://${CHROMIUM_ID}/`],
       });
       expect(parseHostConfig(await readFile(platform.configPath, 'utf8')).development).toBe(true);
-      await expect(install(platform, { extensionIds: [], development: false, source })).rejects.toThrow(
-        '--dev',
-      );
+      await expect(
+        install(platform, { extensionIds: [], development: false, source, addin: new Map(), outlook: false }),
+      ).rejects.toThrow('--dev');
+
+      // The Outlook add-in server runs on Windows only; nothing is installed for it elsewhere.
+      await expect(
+        install(platform, { extensionIds: [], development: true, source, addin: new Map(), outlook: true }),
+      ).rejects.toThrow('Windows only');
 
       await uninstall(platform, { deleteData: false, runningProgram: null });
       expect(await exists(platform.installDirectory)).toBe(false);

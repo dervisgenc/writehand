@@ -155,6 +155,17 @@ test('ChatGPT account, first-use notice and model selection over a simulated nat
     fullPage: true,
     animations: 'disabled',
   });
+  // The Codex sign-in starts only after its risks are shown and confirmed.
+  const codex = page.getByRole('button', { name: 'Codex girişiyle bağlan', exact: true });
+  await codex.click();
+  const codexWarning = page.getByRole('region', { name: 'Codex girişini kullanmadan önce' });
+  await expect(codexWarning).toBeVisible();
+  await expect(codexWarning.getByRole('button', { name: 'Anladım, devam et' })).toBeFocused();
+  await codexWarning.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'test-results/ai-codex-warning-light.png', animations: 'disabled' });
+  await page.keyboard.press('Escape');
+  await expect(codexWarning).toHaveCount(0);
+  await expect(codex).toBeFocused();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByText('Koyu', { exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Writehand ayarları', exact: true })).toHaveCount(1);
@@ -166,6 +177,13 @@ test('ChatGPT account, first-use notice and model selection over a simulated nat
     animations: 'disabled',
   });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await codex.click();
+  await expect(codexWarning).toBeVisible();
+  await codexWarning.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'test-results/ai-codex-warning-narrow-dark.png', animations: 'disabled' });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await codexWarning.getByRole('button', { name: 'İptal', exact: true }).click();
+  await expect(codexWarning).toHaveCount(0);
   await page.getByRole('button', { name: 'Bağlantıyı kes' }).click();
   await expect(page.getByText('Oturum kapalı', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Hesabı kaldır', exact: true }).click();

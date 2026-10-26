@@ -4,11 +4,11 @@ import {
   HELPER_COMMAND,
   SITE_IDS,
 } from '@writehand/contracts';
+import { manifestMessages } from '@writehand/locales';
 import { defineConfig } from 'wxt';
 
 import { version } from '../../package.json';
 import { DEVELOPMENT_MATCHES, SITE_MATCHES } from './src/bootstrap/supported-sites';
-import { manifestMessages } from './src/locales';
 
 /**
  * Builds Manifest V3 packages for Chromium (service worker) and Firefox
@@ -47,7 +47,8 @@ export default defineConfig({
               // API keys and the helper app's sign-in are authentication information.
               data_collection_permissions: { required: ['personalCommunications', 'authenticationInfo'] },
             },
-            gecko_android: { strict_min_version: '142.0' },
+            // No `gecko_android`: Firefox for Android has no native messaging and is not tested, so the
+            // extension is listed for desktop Firefox only (scripts/verify-packages.mjs checks this).
           },
         }
       : {}),

@@ -24,15 +24,21 @@ jobs:
           - { target: windows-x64, runner: windows-2025 }
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           cache: true
       # The program is a copy of this Node.js binary; releases use the current LTS.
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
       - run: pnpm install --frozen-lockfile
+
+      # The helper app carries the Outlook add-in's task pane and serves it (`writehand outlook`).
+      - name: Build the Outlook add-in's task pane
+        run: pnpm addin:build
 
       - name: Build the single-file program
         run: pnpm ai:sea
@@ -41,7 +47,7 @@ jobs:
         shell: bash
         run: |
           mkdir release
-          cp apps/ai-companion/dist/release/* apps/ai-companion/install/install.sh apps/ai-companion/install/install.ps1 release/
+          cp apps/ai-companion/dist/release/* apps/ai-companion/install/install.sh apps/ai-companion/install/install.ps1 apps/ai-companion/install/install-outlook.ps1 release/
           ls release/writehand-${{ matrix.target }}.*
           node scripts/sign-release.mjs release --unsigned
 
@@ -92,7 +98,7 @@ jobs:
           if ($LASTEXITCODE -eq 0) { throw 'The registry key was not removed.' }
           exit 0
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: helper-${{ matrix.target }}
           path: apps/ai-companion/dist/release/*

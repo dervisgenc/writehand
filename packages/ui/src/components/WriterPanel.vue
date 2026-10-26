@@ -5,7 +5,7 @@ import { computed, onMounted, useId, useTemplateRef } from 'vue';
 
 import { useUiText } from '../i18n';
 import { inputChecked, inputValue } from '../input-value';
-import type { PanelView, SourceReloadKind } from '../view-model';
+import type { BindTargetMode, PanelView, SourceReloadKind } from '../view-model';
 import AppIcon from './AppIcon.vue';
 import ApplyControls from './ApplyControls.vue';
 import ContextInspector from './ContextInspector.vue';
@@ -19,6 +19,11 @@ import StatusNotice from './StatusNotice.vue';
 const props = defineProps<{
   view: PanelView;
   limits: { source: number; instruction: number };
+  /**
+   * Fills its container instead of floating over the page (the Outlook add-in's task pane):
+   * no close button, since the host closes the pane, and it does not take focus by itself.
+   */
+  embedded?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -43,7 +48,7 @@ const emit = defineEmits<{
   apply: [];
   copy: [];
   undo: [];
-  'bind-target': [mode: 'replace-existing-reply' | 'use-open-composer'];
+  'bind-target': [mode: BindTargetMode];
   retry: [];
   dismiss: [];
 }>();
@@ -56,7 +61,9 @@ const toneId = useId();
 
 // Focus moves to the panel on open, so even if a button is disabled during an
 // operation, focus stays inside the panel and Escape keeps working.
-onMounted(() => root.value?.focus({ preventScroll: true }));
+onMounted(() => {
+  if (!props.embedded) root.value?.focus({ preventScroll: true });
+});
 
 const isBusy = computed(() => props.view.status.kind === 'busy' && props.view.status.activity !== 'reading');
 const canPrepare = computed(() => props.view.prepare.canPrepare && !props.view.prepare.isPreparing);
@@ -72,6 +79,9 @@ const targetLabel = computed(() => {
   const labels = text.value.target;
   if (target.kind === 'composer') {
     return target.isReply ? labels.replyComposer : labels.composer;
+  }
+  if (target.kind === 'new-reply') {
+    return labels.newReply;
   }
   return target.kind === 'received-message' ? labels.receivedMessage : labels.none;
 });
@@ -90,10 +100,11 @@ function onToneChange(event: Event): void {
   <div
     ref="root"
     class="ew-panel"
-    role="dialog"
+    :class="{ 'ew-panel--embedded': embedded }"
+    :role="embedded ? 'region' : 'dialog'"
     tabindex="-1"
     :aria-labelledby="titleId"
-    @keydown.escape="emit('close')"
+    @keydown.escape="!embedded && emit('close')"
   >
     <header class="ew-panel__header">
       <span class="ew-brand-mark" aria-hidden="true"><AppIcon name="sparkle" :size="18" /></span>
@@ -103,7 +114,9 @@ function onToneChange(event: Event): void {
           <span class="ew-visually-hidden">{{ text.target.label }}: </span>{{ targetLabel }}
         </p>
       </div>
+      <slot name="header-actions" />
       <button
+        v-if="!embedded"
         type="button"
         class="ew-btn ew-btn--subtle ew-btn--icon"
         :aria-label="text.close"
