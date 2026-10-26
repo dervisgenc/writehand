@@ -118,6 +118,13 @@ export const aiTr: AiText = {
   codexSignIn: 'Codex girişi',
   codexConnectionHelp:
     'Bu bağlantı Codex girişini kullanıyor. Kullanım planınızın Codex ile paylaşılan limitlerinden düşer; Business çalışma alanlarında limit dolunca kredi ile devam edilebilir. Oturumu buradan hesabı kaldırarak sonlandırabilirsiniz.',
+  codexWarningTitle: 'Codex girişini kullanmadan önce',
+  codexWarning: [
+    'Yalnızca Continue with ChatGPT’nin kuruluş politikasıyla engellendiği ChatGPT Business, Enterprise veya Edu çalışma alanları için kullanın. Plus ve Pro için Continue with ChatGPT’yi kullanın.',
+    `${PRODUCT_NAME}, OpenAI’ın Codex uygulamasının girişini kullanır. OpenAI bu girişi başka uygulamalar için yayımlamadı: her an değişebilir ya da çalışmayı bırakabilir ve OpenAI bu şekilde kullanan hesapları kısıtlayabilir.`,
+    'Çalışma alanınızın politikaları geçerlidir. Kullanıp kullanamayacağınızdan emin değilseniz önce çalışma alanı yöneticinize danışın.',
+  ],
+  codexWarningContinue: 'Anladım, devam et',
   addAccount: 'Farklı hesap veya çalışma alanı ekle',
   reconnect: 'Yeniden bağlan',
   disconnect: 'Bağlantıyı kes',

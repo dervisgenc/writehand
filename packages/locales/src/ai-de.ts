@@ -118,6 +118,13 @@ export const aiDe: AiText = {
   codexSignIn: 'Codex-Anmeldung',
   codexConnectionHelp:
     'Diese Verbindung verwendet die Codex-Anmeldung. Die Nutzung wird auf die mit Codex geteilten Limits Ihres Plans angerechnet; in Business-Arbeitsbereichen können Credits die Nutzung danach fortsetzen. Sie beenden die Sitzung, indem Sie das Konto hier entfernen.',
+  codexWarningTitle: 'Bevor Sie sich über Codex anmelden',
+  codexWarning: [
+    'Nur für ChatGPT-Business-, -Enterprise- oder -Edu-Arbeitsbereiche, in denen eine Organisationsrichtlinie Continue with ChatGPT sperrt. Für Plus und Pro verwenden Sie Continue with ChatGPT.',
+    `${PRODUCT_NAME} meldet sich mit der Anmeldung der Codex-App von OpenAI an. OpenAI hat diese Anmeldung nicht für andere Apps veröffentlicht: Sie kann sich jederzeit ändern oder nicht mehr funktionieren, und OpenAI kann Konten einschränken, die sie so verwenden.`,
+    'Es gelten die Richtlinien Ihres Arbeitsbereichs. Wenn Sie nicht sicher sind, ob Sie sie verwenden dürfen, fragen Sie zuerst Ihre Arbeitsbereich-Administration.',
+  ],
+  codexWarningContinue: 'Verstanden, weiter',
   addAccount: 'Anderes Konto oder anderen Arbeitsbereich hinzufügen',
   reconnect: 'Neu verbinden',
   disconnect: 'Trennen',

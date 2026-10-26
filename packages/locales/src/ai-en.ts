@@ -118,6 +118,13 @@ export const aiEn: AiText = {
   codexSignIn: 'Codex sign-in',
   codexConnectionHelp:
     'This connection uses the Codex sign-in. Usage counts against your plan’s limits shared with Codex; on Business workspaces, credits can keep you going once they run out. You can end the session by removing the account here.',
+  codexWarningTitle: 'Before you sign in through Codex',
+  codexWarning: [
+    'Use it only for a ChatGPT Business, Enterprise or Edu workspace, where an organization policy blocks Continue with ChatGPT. For Plus and Pro, use Continue with ChatGPT.',
+    `${PRODUCT_NAME} signs in with the sign-in of OpenAI’s Codex app. OpenAI has not published this sign-in for other apps: it can change or stop working at any time, and OpenAI may restrict accounts that use it this way.`,
+    'Your workspace’s policies apply. If you are not sure you may use it, ask your workspace admin first.',
+  ],
+  codexWarningContinue: 'I understand, continue',
   addAccount: 'Add a different account or workspace',
   reconnect: 'Reconnect',
   disconnect: 'Disconnect',

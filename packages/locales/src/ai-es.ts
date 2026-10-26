@@ -118,6 +118,13 @@ export const aiEs: AiText = {
   codexSignIn: 'Inicio de sesión con Codex',
   codexConnectionHelp:
     'Esta conexión usa el inicio de sesión de Codex. El uso se descuenta de los límites de tu plan compartidos con Codex; en los espacios de trabajo Business, los créditos permiten seguir cuando se agotan. Puedes cerrar la sesión quitando la cuenta aquí.',
+  codexWarningTitle: 'Antes de iniciar sesión con Codex',
+  codexWarning: [
+    'Úsalo solo para un espacio de trabajo ChatGPT Business, Enterprise o Edu, donde una directiva de la organización bloquea Continue with ChatGPT. Para Plus y Pro, usa Continue with ChatGPT.',
+    `${PRODUCT_NAME} inicia sesión con el inicio de sesión de la aplicación Codex de OpenAI. OpenAI no ha publicado este inicio de sesión para otras aplicaciones: puede cambiar o dejar de funcionar en cualquier momento, y OpenAI puede restringir las cuentas que lo usen así.`,
+    'Se aplican las directivas de tu espacio de trabajo. Si no sabes si puedes usarlo, consulta antes al administrador de tu espacio de trabajo.',
+  ],
+  codexWarningContinue: 'Entendido, continuar',
   addAccount: 'Añadir otra cuenta o espacio de trabajo',
   reconnect: 'Volver a conectar',
   disconnect: 'Desconectar',

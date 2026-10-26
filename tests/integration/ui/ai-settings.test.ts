@@ -216,9 +216,47 @@ describe('AI connection settings', () => {
     expect(codex.attributes('disabled')).toBeUndefined();
     expect(wrapper.text()).toContain(tr.ui.ai.codexHint);
     await codex.trigger('click');
+    const proceed = wrapper
+      .findAll('button')
+      .find((button) => button.text() === tr.ui.ai.codexWarningContinue)!;
+    expect(proceed.attributes('disabled')).toBeUndefined();
+    await proceed.trigger('click');
     expect(wrapper.emitted('command')?.[0]).toEqual([
       { action: 'connect', accountId: null, signIn: 'codex' },
     ]);
+    expect(wrapper.find('.ew-ai-codex-warning').exists()).toBe(false);
+    wrapper.unmount();
+  });
+  it('shows the risks of the Codex sign-in and starts it only after confirmation', async () => {
+    const wrapper = render(disconnected);
+    const codex = () => wrapper.findAll('button').find((button) => button.text() === tr.ui.ai.codexConnect)!;
+    expect(wrapper.find('.ew-ai-codex-warning').exists()).toBe(false);
+    expect(codex().attributes('aria-expanded')).toBe('false');
+
+    await codex().trigger('click');
+    const warning = wrapper.get('.ew-ai-codex-warning');
+    expect(codex().attributes('aria-expanded')).toBe('true');
+    expect(warning.attributes('id')).toBe(codex().attributes('aria-controls'));
+    expect(warning.text()).toContain(tr.ui.ai.codexWarningTitle);
+    for (const line of tr.ui.ai.codexWarning) expect(warning.text()).toContain(line);
+    expect(wrapper.emitted('command')).toBeUndefined();
+
+    // Cancel closes it without signing in.
+    await warning
+      .findAll('button')
+      .find((button) => button.text() === tr.ui.ai.cancel)!
+      .trigger('click');
+    expect(wrapper.find('.ew-ai-codex-warning').exists()).toBe(false);
+    expect(wrapper.emitted('command')).toBeUndefined();
+
+    // Escape closes it too; the button toggles it.
+    await codex().trigger('click');
+    await wrapper.get('.ew-ai-codex-warning').trigger('keydown', { key: 'Escape' });
+    expect(wrapper.find('.ew-ai-codex-warning').exists()).toBe(false);
+    await codex().trigger('click');
+    await codex().trigger('click');
+    expect(wrapper.find('.ew-ai-codex-warning').exists()).toBe(false);
+    expect(wrapper.emitted('command')).toBeUndefined();
     wrapper.unmount();
   });
   it('marks Codex connections and explains how they are billed and ended', async () => {

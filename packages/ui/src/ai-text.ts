@@ -48,6 +48,10 @@ export interface AiText {
   /** Marks Codex sign-ins in the account list. */
   readonly codexSignIn: string;
   readonly codexConnectionHelp: string;
+  /** Shown before a Codex sign-in starts; the user confirms or cancels it. */
+  readonly codexWarningTitle: string;
+  readonly codexWarning: readonly string[];
+  readonly codexWarningContinue: string;
   readonly addAccount: string;
   readonly reconnect: string;
   readonly disconnect: string;

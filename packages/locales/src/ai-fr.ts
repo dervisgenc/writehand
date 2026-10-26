@@ -118,6 +118,13 @@ export const aiFr: AiText = {
   codexSignIn: 'Connexion Codex',
   codexConnectionHelp:
     'Cette connexion utilise la connexion Codex. L’utilisation est décomptée des limites de votre forfait partagées avec Codex ; dans les espaces de travail Business, des crédits permettent de continuer une fois ces limites atteintes. Vous pouvez mettre fin à la session en supprimant le compte ici.',
+  codexWarningTitle: 'Avant de vous connecter via Codex',
+  codexWarning: [
+    'À utiliser uniquement pour un espace de travail ChatGPT Business, Enterprise ou Edu, où une stratégie de l’organisation bloque Continue with ChatGPT. Pour Plus et Pro, utilisez Continue with ChatGPT.',
+    `${PRODUCT_NAME} se connecte avec la connexion de l’application Codex d’OpenAI. OpenAI n’a pas publié cette connexion pour d’autres applications : elle peut changer ou cesser de fonctionner à tout moment, et OpenAI peut restreindre les comptes qui l’utilisent ainsi.`,
+    'Les règles de votre espace de travail s’appliquent. En cas de doute, demandez d’abord à l’administrateur de votre espace de travail.',
+  ],
+  codexWarningContinue: 'J’ai compris, continuer',
   addAccount: 'Ajouter un autre compte ou espace de travail',
   reconnect: 'Se reconnecter',
   disconnect: 'Se déconnecter',
