@@ -12,6 +12,8 @@ import {
 import {
   addinFiles,
   bridgeToken,
+  pageKey,
+  personalManifest,
   commandLine,
   disableOutlook,
   enableOutlook,
@@ -96,7 +98,7 @@ async function setup(changes: Partial<HostConfig> = {}) {
   };
   const files = addinFiles([
     ['taskpane.html', Buffer.from('<html>pane</html>').toString('base64')],
-    ['manifest.xml', Buffer.from('<OfficeApp>manifest</OfficeApp>').toString('base64')],
+    ['manifest.xml', Buffer.from(MANIFEST).toString('base64')],
   ]);
   const context: OutlookContext = { platform, config: { ...DEFAULT_HOST_CONFIG, ...changes }, files };
   const saved = async () => parseHostConfig(await readFile(platform.configPath, 'utf8').catch(() => null));
@@ -105,6 +107,16 @@ async function setup(changes: Partial<HostConfig> = {}) {
 
 const printed = (io: { print: ReturnType<typeof vi.fn> }) =>
   io.print.mock.calls.map(([text]) => text).join('\n');
+
+/** A manifest with the pane's three kinds of address: plain, with Outlook's command, and none. */
+const MANIFEST = [
+  '<OfficeApp>',
+  '<SourceLocation DefaultValue="https://localhost:41537/taskpane.html"/>',
+  '<bt:Url id="Taskpane.Revise.Url" DefaultValue="https://localhost:41537/taskpane.html?command=revise"/>',
+  '<bt:Url id="Commands.Url" DefaultValue="https://localhost:41537/commands.html"/>',
+  '<bt:Image id="Icon.16x16" DefaultValue="https://localhost:41537/assets/icon-16.png"/>',
+  '</OfficeApp>',
+].join('');
 
 describe('the windowless program copy', () => {
   it('sets the GUI subsystem in place of the console subsystem and changes nothing else', async () => {
@@ -180,7 +192,12 @@ describe('writehand outlook', () => {
     expect(values.get(`${WINDOWS_RUN_KEY}\\${OUTLOOK_AUTOSTART_VALUE}`)).toBe(
       `"${outlook.windowlessProgramPath}" "outlook" "serve"`,
     );
-    expect(await readFile(outlook.manifestPath, 'utf8')).toBe('<OfficeApp>manifest</OfficeApp>');
+    // The manifest carries this user's page key in every address of the pane, and nowhere else.
+    const key = (await readFile(join(outlook.directory, 'page.key'), 'utf8')).trim();
+    expect(key).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(await readFile(outlook.manifestPath, 'utf8')).toBe(
+      personalManifest(Buffer.from(MANIFEST), key).toString(),
+    );
     expect(io.start).toHaveBeenCalledWith({
       file: outlook.windowlessProgramPath,
       args: ['outlook', 'serve'],
@@ -302,6 +319,44 @@ describe('writehand outlook', () => {
     const { context, io } = await setup();
     const platform = { ...context.platform, outlook: null };
     await expect(enableOutlook({ ...context, platform }, io)).rejects.toThrow('Windows only');
+  });
+});
+
+describe("the pane's page key", () => {
+  it('goes into every address of the task pane in the manifest, before Outlook’s own parameters', () => {
+    const key = 'K'.repeat(43);
+    const xml = personalManifest(Buffer.from(MANIFEST), key).toString();
+    expect(xml).toContain(`DefaultValue="https://localhost:41537/taskpane.html?key=${key}"`);
+    expect(xml).toContain(
+      `DefaultValue="https://localhost:41537/taskpane.html?key=${key}&amp;command=revise"`,
+    );
+    expect(xml).toContain('DefaultValue="https://localhost:41537/commands.html"');
+    expect(xml).toContain('DefaultValue="https://localhost:41537/assets/icon-16.png"');
+    expect(xml.match(/key=/g)).toHaveLength(2);
+  });
+
+  it('stays the same when the certificate is renewed, so the add-in in Outlook keeps working', async () => {
+    const { context, io, outlook, saved } = await setup();
+    await enableOutlook(context, io);
+    const first = await readFile(outlook.manifestPath, 'utf8');
+    await enableOutlook({ ...context, config: await saved() }, io);
+    expect(await readFile(outlook.manifestPath, 'utf8')).toBe(first);
+    expect((await pageKey(outlook.directory)).created).toBe(false);
+  });
+
+  it('after an update of a server turned on without it, asks to add the add-in again', async () => {
+    const { context, io, outlook, saved } = await setup();
+    await enableOutlook(context, io);
+    await rm(join(outlook.directory, 'page.key'));
+    io.print.mockClear();
+    await refreshOutlook({ ...context, config: await saved() }, io);
+    const key = (await readFile(join(outlook.directory, 'page.key'), 'utf8')).trim();
+    expect(await readFile(outlook.manifestPath, 'utf8')).toContain(`taskpane.html?key=${key}`);
+    expect(printed(io)).toContain('must be added again');
+
+    io.print.mockClear();
+    await refreshOutlook({ ...context, config: await saved() }, io);
+    expect(printed(io)).not.toContain('must be added again');
   });
 });
 

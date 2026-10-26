@@ -384,6 +384,44 @@ describe('AI service and protected storage', () => {
     expect((await store.read()).accounts).toEqual([]);
     expect(restrictDirectory).toHaveBeenCalledTimes(2);
   });
+
+  it('restricts a directory that already exists once per process and never removes it', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'writehand-store-'));
+    temporary.push(directory);
+    await writeFile(
+      join(directory, 'credentials.json'),
+      JSON.stringify({ ...initial(), apiKey: null, apiModel: null }),
+      {
+        mode: 0o600,
+      },
+    );
+    // A failure on an existing directory leaves it and its credentials as they were.
+    const restrictDirectory = vi.fn().mockRejectedValue(new Error('denied'));
+    const store = createCredentialStore(directory, { restrictDirectory });
+
+    expect((await store.read()).activeAccountId).toBe('oaiapp_one');
+    await store.read();
+    await store.update(() => undefined);
+    expect(restrictDirectory).toHaveBeenCalledTimes(1);
+    expect(restrictDirectory).toHaveBeenCalledWith(directory);
+    expect(await readdir(directory)).toContain('credentials.json');
+  });
+
+  it('reads saved credentials without rewriting the file', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'writehand-store-'));
+    temporary.push(directory);
+    const store = createCredentialStore(directory);
+    const first = await store.read();
+    const file = join(directory, 'credentials.json');
+    // The first read wrote the file once, with the host ID it reports.
+    expect(JSON.parse(await readFile(file, 'utf8'))).toMatchObject({ hostId: first.hostId });
+    const before = await stat(file);
+
+    for (let i = 0; i < 3; i += 1) expect((await store.read()).hostId).toBe(first.hostId);
+    const after = await stat(file);
+    // A replacement would give the file a new inode (or at least a new modification time).
+    expect([after.ino, after.mtimeMs]).toEqual([before.ino, before.mtimeMs]);
+  });
 });
 
 describe('Loopback sign-in', () => {

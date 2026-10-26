@@ -31,6 +31,8 @@ export interface OutlookServerOptions {
   readonly dispatch: (raw: unknown) => Promise<DispatchResult | null>;
   /** Written into the pane's page; the pane sends it back with every request. */
   readonly token: string;
+  /** The key the pane's address must carry (`?key=`) for the page to get the token. */
+  readonly pageKey: string;
   readonly controlToken: string;
   readonly status: () => object;
   readonly onStop: () => void;
@@ -162,7 +164,8 @@ export function createOutlookHandler(options: OutlookServerOptions) {
     send(response, 404);
   }
 
-  function file(request: IncomingMessage, response: ServerResponse, path: string): void {
+  function file(request: IncomingMessage, response: ServerResponse, url: URL): void {
+    const path = url.pathname;
     const name = path === '/' ? TASKPANE_PATH : path.slice(1);
     const found = options.files.get(name);
     if (found === undefined) return send(response, 404);
@@ -170,13 +173,20 @@ export function createOutlookHandler(options: OutlookServerOptions) {
     const headers: Record<string, string> = { 'content-type': found.type };
     if (page) headers['content-security-policy'] = `frame-ancestors ${FRAME_ANCESTORS.join(' ')}`;
     else headers['cache-control'] = 'no-cache';
-    const body = name === TASKPANE_PATH ? withToken(found.body, options.token) : found.body;
+    // The token goes only into a pane requested with this user's page key, which only their own
+    // manifest carries. Any other local client, such as a program of another Windows account on
+    // this computer, gets the page without it and so cannot use the helper app.
+    const keyed =
+      name === TASKPANE_PATH &&
+      sameToken(url.searchParams.get(OUTLOOK_BRIDGE.pageKeyParameter) ?? undefined, options.pageKey);
+    const body = keyed ? withToken(found.body, options.token) : found.body;
     send(response, 200, headers, request.method === 'HEAD' ? undefined : body);
   }
 
   return (request: IncomingMessage, response: ServerResponse): void => {
     if (!hosts.has(request.headers.host ?? '')) return send(response, 421);
-    const path = new URL(request.url ?? '/', 'https://localhost').pathname;
+    const url = new URL(request.url ?? '/', 'https://localhost');
+    const path = url.pathname;
     if (path === OUTLOOK_BRIDGE.path) {
       if (request.method !== 'POST') return send(response, 405);
       void bridge(request, response).catch(() => send(response, 500));
@@ -184,7 +194,7 @@ export function createOutlookHandler(options: OutlookServerOptions) {
     }
     if (path.startsWith('/control/')) return control(request, response, path);
     if (request.method !== 'GET' && request.method !== 'HEAD') return send(response, 405);
-    file(request, response, path);
+    file(request, response, url);
   };
 }
 

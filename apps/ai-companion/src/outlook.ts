@@ -7,6 +7,7 @@ import { userInfo } from 'node:os';
 import {
   OUTLOOK_ADDIN_ORIGIN,
   OUTLOOK_ADDIN_PORT,
+  OUTLOOK_BRIDGE,
   OUTLOOK_BRIDGE_REQUESTS,
   PRODUCT_NAME,
 } from '@writehand/contracts';
@@ -16,7 +17,7 @@ import { preparePrivateDirectory } from './credential-store';
 import { createHelperService, createHostDispatcher } from './host-dispatch';
 import { serializeHostConfig, type HostConfig } from './host-config';
 import { createLocalCertificates } from './local-certificate';
-import { contentTypeOf, startOutlookServer, type AddinFile } from './outlook-server';
+import { contentTypeOf, startOutlookServer, TASKPANE_PATH, type AddinFile } from './outlook-server';
 import type { Command, HostPlatform, OutlookPlatform } from './platform';
 import { HOST_VERSION } from './version';
 import { writeWindowlessCopy } from './windowless-program';
@@ -88,6 +89,7 @@ const FILES = {
   key: 'server.key',
   state: 'server.json',
   bridgeToken: 'bridge.token',
+  pageKey: 'page.key',
 } as const;
 
 /**
@@ -95,12 +97,42 @@ const FILES = {
  * stays open while the server is updated or restarted keeps working; `disable` deletes it.
  */
 export async function bridgeToken(directory: string): Promise<string> {
-  const path = join(directory, FILES.bridgeToken);
+  return (await storedSecret(directory, FILES.bridgeToken)).value;
+}
+
+/**
+ * The key in the pane's address (`taskpane.html?key=…`). Only this user's manifest carries it: the
+ * file in their own program folder and the copy in their mailbox. The server writes the bridge
+ * token only into a page requested with it, so another Windows account on this computer, which can
+ * reach the port but not the manifest, cannot obtain the token. It is kept across certificate
+ * renewals and updates, because changing it means adding the add-in to Outlook again.
+ */
+export async function pageKey(directory: string): Promise<{ value: string; created: boolean }> {
+  return storedSecret(directory, FILES.pageKey);
+}
+
+/** 32 random bytes in a file of the server's private folder, created when missing or unusable. */
+async function storedSecret(directory: string, name: string): Promise<{ value: string; created: boolean }> {
+  const path = join(directory, name);
   const stored = (await readFile(path, 'utf8').catch(() => '')).trim();
-  if (/^[A-Za-z0-9_-]{43}$/.test(stored)) return stored;
-  const token = randomBytes(32).toString('base64url');
-  await writeFile(path, token, { mode: 0o600 });
-  return token;
+  if (/^[A-Za-z0-9_-]{43}$/.test(stored)) return { value: stored, created: false };
+  const value = randomBytes(32).toString('base64url');
+  await writeFile(path, value, { mode: 0o600 });
+  return { value, created: true };
+}
+
+/** The add-in's manifest with the page key in every address of the task pane. */
+export function personalManifest(manifest: Buffer, key: string): Buffer {
+  const pane = `${OUTLOOK_ADDIN_ORIGIN}/${TASKPANE_PATH}`;
+  const parameter = `${OUTLOOK_BRIDGE.pageKeyParameter}=${key}`;
+  const escaped = pane.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const xml = manifest
+    .toString('utf8')
+    // `pane"` gets `?key=…`; `pane?command=…"` gets `?key=…&amp;command=…` (the manifest is XML).
+    .replace(new RegExp(`${escaped}(\\?[^"]*)?"`, 'g'), (_match, query: string | undefined) =>
+      query ? `${pane}?${parameter}&amp;${query.slice(1)}"` : `${pane}?${parameter}"`,
+    );
+  return Buffer.from(xml);
 }
 
 const stateSchema = z.object({
@@ -270,7 +302,9 @@ export async function enableOutlook(context: OutlookContext, io: OutlookIo): Pro
     );
   }
 
-  await preparePrivateDirectory(platform.dataDirectory, platform.restrictDirectory);
+  await preparePrivateDirectory(platform.dataDirectory, platform.restrictDirectory, {
+    restrictExisting: true,
+  });
   await mkdir(outlook.directory, { recursive: true });
   const certificates = createLocalCertificates({ now: io.now(), label: label() });
   const pending = fileIn(context, 'authority.pending.crt');
@@ -314,7 +348,8 @@ export async function enableOutlook(context: OutlookContext, io: OutlookIo): Pro
   }
 
   await installServerProgram(current);
-  await writeFile(outlook.manifestPath, manifest.body);
+  const key = await pageKey(outlook.directory);
+  await writeFile(outlook.manifestPath, personalManifest(manifest.body, key.value));
   const running = await startServer(current, io);
   io.print(
     running
@@ -405,7 +440,16 @@ export async function refreshOutlook(context: OutlookContext, io: OutlookIo): Pr
   if (context.config.outlook === null || context.platform.outlook === null) return;
   await installServerProgram(context);
   const manifest = context.files.get('manifest.xml');
-  if (manifest !== undefined) await writeFile(context.platform.outlook.manifestPath, manifest.body);
+  if (manifest !== undefined) {
+    const key = await pageKey(context.platform.outlook.directory);
+    await writeFile(context.platform.outlook.manifestPath, personalManifest(manifest.body, key.value));
+    // A server turned on before the page key existed: the add-in in Outlook has the old address,
+    // whose pane gets no token, so the plans are not available there until it is added again.
+    if (key.created)
+      io.print(
+        `The ${PRODUCT_NAME} add-in in Outlook must be added again for the ChatGPT and Claude plans: remove it at ${OUTLOOK_SIDELOAD_URL} → My add-ins, then add this file: ${context.platform.outlook.manifestPath}`,
+      );
+  }
   if (!(await startServer(context, io)))
     io.print('The Outlook add-in server did not restart; it starts when you sign in to Windows.');
 }
@@ -454,6 +498,7 @@ export async function serveOutlook(context: OutlookContext, io: OutlookIo): Prom
     files: context.files,
     dispatch: (raw: unknown) => dispatcher.dispatch(raw),
     token: await bridgeToken(outlookOf(context.platform).directory),
+    pageKey: (await pageKey(outlookOf(context.platform).directory)).value,
     controlToken: state.controlToken,
     cert,
     key,

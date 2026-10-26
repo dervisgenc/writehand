@@ -42,7 +42,7 @@ Commands:
       also turns on the Outlook add-in server, as outlook enable does.
   uninstall [--delete-data]
       Remove the browser registrations and the program. --delete-data also signs out
-      of ChatGPT and deletes credentials and API keys from this computer.
+      of ChatGPT and deletes its saved sign-in details from this computer.
   status
       Show the version, the browser registrations and whether Claude Code is ready.
   update [--check]

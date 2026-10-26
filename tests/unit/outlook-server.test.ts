@@ -15,6 +15,7 @@ const PORT = 41537;
 const ORIGIN = `https://localhost:${PORT}`;
 const TOKEN = 'pane-token-0123456789';
 const CONTROL = 'control-token-0123456789';
+const KEY = 'page-key-of-this-user-0123456789';
 
 const file = (path: string, body: string): [string, AddinFile] => [
   path,
@@ -50,6 +51,7 @@ function setup() {
     files,
     dispatch,
     token: TOKEN,
+    pageKey: KEY,
     controlToken: CONTROL,
     status: () => ({ version: '9.9.9' }),
     onStop,
@@ -107,7 +109,8 @@ const statusRequest = JSON.stringify({ protocolVersion: 1, requestId: 'r1', type
 describe('the local Outlook add-in server', () => {
   it('serves the pane with its token, only inside Outlook frames, and never caches it', async () => {
     const { call } = await setup();
-    const page = await call({ path: '/taskpane.html' });
+    // The address from the user's manifest, with Outlook's own parameters added.
+    const page = await call({ path: `/taskpane.html?key=${KEY}&command=revise&_host_Info=Outlook$Win32` });
     expect(page.status).toBe(200);
     expect(page.body).toContain(`<meta name="writehand-bridge" content="${TOKEN}">`);
     expect(page.headers['content-type']).toBe('text/html; charset=utf-8');
@@ -115,6 +118,28 @@ describe('the local Outlook add-in server', () => {
     expect(page.headers['cache-control']).toBe('no-store');
     expect(page.headers['x-content-type-options']).toBe('nosniff');
     expect((await call({ path: '/' })).body).toContain('pane');
+  });
+
+  it('gives the token only to a pane requested with the page key of its manifest', async () => {
+    const { call } = await setup();
+    const empty = '<meta name="writehand-bridge" content="">';
+    // Any local client can request the page, for example a program of another Windows account;
+    // without this user's key it gets the page, but not the token.
+    for (const path of [
+      '/taskpane.html',
+      '/',
+      '/taskpane.html?key=page-key-of-another-user-012345',
+      `/taskpane.html?key=${KEY}x`,
+      `/taskpane.html?command=revise&KEY=${KEY}`,
+    ]) {
+      const page = await call({ path });
+      expect(page.status, path).toBe(200);
+      expect(page.body, path).toContain(empty);
+      expect(page.body, path).not.toContain(TOKEN);
+    }
+    expect((await call({ path: `/taskpane.html?command=write&key=${KEY}` })).body).toContain(TOKEN);
+    // The root serves the pane too, under the same rule.
+    expect((await call({ path: `/?key=${KEY}` })).body).toContain(TOKEN);
   });
 
   it('serves the built files by their exact names and nothing else', async () => {

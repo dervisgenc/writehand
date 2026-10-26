@@ -52,6 +52,11 @@ export const OUTLOOK_BRIDGE = Object.freeze({
   tokenHeader: 'x-writehand-bridge',
   /** `<meta name>` in `taskpane.html` whose `content` the server fills with the token. */
   tokenMeta: 'writehand-bridge',
+  /**
+   * Query parameter of the pane's address in the user's own manifest. The server fills in the
+   * token only for a page requested with this user's key (see `pageKey` in the helper app).
+   */
+  pageKeyParameter: 'key',
 });
 
 /**
