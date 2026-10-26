@@ -1,10 +1,10 @@
 # Outlook add-in
 
-**Status: in development, not released (2026-10-25).** Writehand for the Outlook applications as an Office Add-in (Office.js), Windows first, built on the `feat/outlook-addin` branch. The helper app serves the add-in on the user's computer (`writehand outlook enable`), so the add-in works with the ChatGPT plan, the Claude plan and API keys. It has been checked in one real client: the new Outlook for Windows, with the ChatGPT and Claude plans through the helper app (2026-10-25) and with the sample build (2026-10-23). Classic Outlook for Windows, Outlook on the web and Outlook for Mac have not been checked in a real client, nor has an API key provider called from the task pane. The draft's **Writehand** menu and the first run of the one-command install (`install-outlook.ps1`) are new and not yet checked in a real client; the install's update path is.
+**Status: preview, released with 0.2.0 for Windows (2026-10-26).** Writehand for the Outlook applications as an Office Add-in (Office.js), Windows first. The helper app serves the add-in on the user's computer (`writehand outlook enable`), so the add-in works with the ChatGPT plan, the Claude plan and API keys. It has been checked in one real client: the new Outlook for Windows, with the ChatGPT and Claude plans through the helper app (2026-10-25) and with the sample build (2026-10-23). Classic Outlook for Windows, Outlook on the web and Outlook for Mac have not been checked in a real client, nor has an API key provider called from the task pane. The draft's **Writehand** menu and the first run of the one-command install (`install-outlook.ps1`) are new and not yet checked in a real client; the install's update path is.
 
 This guide describes what the add-in does, how to install it, how it works and how to develop and test it. Platform facts were checked on learn.microsoft.com or the vendor's own documentation on 2026-10-22 to 2026-10-25 and link their source; what was seen in a real client is marked as such and recorded in [Manual testing](./MANUAL_TESTING.md#7-outlook-add-in). Facts that neither the documentation nor a real client confirms are marked **unconfirmed**.
 
-See also: [Helper app → Outlook add-in server](./HELPER_APP.md#outlook-add-in-server-windows), [Development guide](./DEVELOPMENT.md), [Manual testing](./MANUAL_TESTING.md#7-outlook-add-in), [Privacy policy](../PRIVACY.md#outlook-add-in-in-development), [Security policy](../SECURITY.md).
+See also: [Helper app → Outlook add-in server](./HELPER_APP.md#outlook-add-in-server-windows), [Development guide](./DEVELOPMENT.md), [Manual testing](./MANUAL_TESTING.md#7-outlook-add-in), [Privacy policy](../PRIVACY.md#outlook-add-in-preview), [Security policy](../SECURITY.md).
 
 ## What it does
 
@@ -71,7 +71,7 @@ Sources: [Outlook requirement sets and client table](https://learn.microsoft.com
 
 So the user runs one command, confirms one Windows prompt, adds one file in Outlook on the web and restarts Outlook. The certificate prompt cannot be avoided: Office loads add-ins only over HTTPS with a trusted certificate, and the only store Windows lets a program add to without asking is the computer-wide one, which needs administrator rights (another prompt).
 
-An administrator can deploy the same manifest from the Microsoft 365 admin center (**Integrated apps**), which saves users step 2; every user still runs the command of step 1, because the manifest points to their own computer ([Deploy add-ins in the admin center](https://learn.microsoft.com/en-us/microsoft-365/admin/manage/manage-deployment-of-add-ins)).
+An administrator can deploy the add-in from the Microsoft 365 admin center (**Integrated apps**) with the manifest from a helper app release (`apps/outlook-addin/dist/manifest.xml`), which saves users step 2; every user still runs the command of step 1, because the manifest points to their own computer ([Deploy add-ins in the admin center](https://learn.microsoft.com/en-us/microsoft-365/admin/manage/manage-deployment-of-add-ins)). That shared manifest carries no user's page key, so its pane offers API keys only; for the ChatGPT and Claude plans, each user adds their own `outlook-manifest.xml` as in step 2. Not checked in a real tenant.
 
 To remove it, remove **Writehand** on the same **My add-ins** page and run `writehand outlook disable`, which stops the server, removes the certificate (Windows asks again) and the sign-in entry. Uninstalling the helper app does the same.
 
@@ -147,7 +147,7 @@ Rich results (tables, lists, charts) are written as HTML through the same calls.
 
 **API keys.** The three providers answer browser requests with `Access-Control-Allow-Origin: *` and allow the `Authorization` header, so the provider code runs unchanged in the task pane with `fetch` (preflight requests checked on 2026-10-22; not yet from a real pane). Keys follow the extension's model: AES-GCM with a non-extractable key kept as a `CryptoKey` in the pane origin's IndexedDB, ciphertext in `localStorage`, both namespaced with `Office.context.partitionKey` where Office provides one ([Persist add-in state](https://learn.microsoft.com/en-us/office/dev/add-ins/develop/persisting-add-in-state-and-settings)). Storage is per Outlook application and is not shared with the extension. `OfficeRuntime.storage` and roaming settings are not used ([RoamingSettings](https://learn.microsoft.com/en-us/javascript/api/outlook/office.roamingsettings): "shouldn't be used to store sensitive information").
 
-A page that the helper app did not serve (the development server, the tests) has no token and offers API keys only.
+A page that the helper app did not serve (the development server, the tests), or that it served without the user's page key, has no token and offers API keys only. The page key (`?key=` in every pane address of the user's `outlook-manifest.xml`) keeps the token from other local clients, such as another Windows account's programs on the same computer: they can reach the port but cannot read the user's manifest.
 
 ### Context
 
@@ -173,7 +173,7 @@ Office.js exposes only the open item.
 | Storage | `localStorage` and IndexedDB of `https://localhost:41537`, namespaced by `partitionKey` | Settings and the encrypted API key stay in the Outlook application; the plans' accounts stay in the helper app |
 | Clipboard | Written only when you press **Copy**: the Clipboard API, or the copy command where the host refuses it; never read | The new Outlook refuses the Clipboard API to add-in frames |
 
-Data flow of one generation: you press a button in the pane → the connector reads the open item through Office.js, in memory only → the panel shows the context and you decide what is sent → with a plan, the pane sends the request to the helper app on this computer, which sends it to OpenAI or Anthropic as for the extension; with an API key, the pane sends it straight to the chosen provider → the preview appears → you apply it and the connector writes the draft once. Microsoft's CDN serves Office.js and Outlook mediates every Office.js call. No email content, key or request goes to Writehand. [PRIVACY.md](../PRIVACY.md#outlook-add-in-in-development) states this for users.
+Data flow of one generation: you press a button in the pane → the connector reads the open item through Office.js, in memory only → the panel shows the context and you decide what is sent → with a plan, the pane sends the request to the helper app on this computer, which sends it to OpenAI or Anthropic as for the extension; with an API key, the pane sends it straight to the chosen provider → the preview appears → you apply it and the connector writes the draft once. Microsoft's CDN serves Office.js and Outlook mediates every Office.js call. No email content, key or request goes to Writehand. [PRIVACY.md](../PRIVACY.md#outlook-add-in-preview) states this for users.
 
 ## Distribution
 
@@ -232,7 +232,7 @@ Passing these says nothing about a real Outlook.
 
 The checklist and every recorded run are in [Manual testing → Outlook add-in](./MANUAL_TESTING.md#7-outlook-add-in). The runs found problems the automated tests could not: the new Outlook gives a new message a conversation ID before it is saved, refuses the Clipboard API to add-in frames, and an open pane lost the helper app after a server restart (a new token per start). All three are fixed and checked again in that client.
 
-## Work before the first release
+## Open checks for the preview
 
 1. Real-client checks of an API key provider from the pane and of **Draft reply** with a received email as context.
 2. Classic Outlook for Windows (Word HTML bodies, `bodyMode` ignored, Outlook's undo after a write).
@@ -249,7 +249,7 @@ Later: Outlook for Mac (the helper app serving the pane there, with the certific
 | 3 | Body HTML differs per client, so signature and quote detection may miss | Not documented | Conservative `canReplaceBody`; synthetic fixtures per dialect |
 | 4 | The pane needs the helper app's server: if it does not run, Outlook cannot load the pane | Design | It starts at sign-in and is handed over on updates; `writehand outlook status` reports it |
 | 5 | The user must trust a local certificate authority, and renew it before it expires (825 days) | Office requires HTTPS with a trusted certificate | Name constraints limit it to `localhost`, `127.0.0.1` and `::1`; its private key is never stored; `outlook status` shows the date; `outlook enable` renews |
-| 6 | Port 41537 may be taken by another program | The manifest fixes the port | The server stops quietly when the port is taken; the pane then does not load. Not seen so far |
+| 6 | Port 41537 may be taken by another program, or by another user's server on a computer several people use at once (Remote Desktop, multi-session Windows) | The manifest fixes the port | The server stops quietly when the port is taken; the pane then does not load. On a shared computer only the first user's server runs. Another user's server cannot stand in for this user's: this user's Windows does not trust its certificate, and it does not know this user's page key. Not seen so far |
 | 7 | The frames around the pane may differ per client (`frame-ancestors`) | Measured only in the new Outlook | Check classic Outlook; widen the list if a client frames the pane from another Outlook origin |
 | 8 | Outlook on the web in a browser frames the pane from a public page; the browser may block or prompt for the `https://localhost` frame (Local Network Access) | [Chrome: Local Network Access](https://developer.chrome.com/blog/local-network-access) | Not a target: the browser extension serves Outlook on the web |
 | 9 | Provider CORS is observed, not promised, by Groq and OpenRouter | Preflight check 2026-10-22 | A provider that closes CORS disables that provider in the add-in only |

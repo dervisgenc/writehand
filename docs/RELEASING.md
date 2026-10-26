@@ -108,15 +108,34 @@ Submission is manual. Submit to **Firefox Add-ons (AMO)** and **Microsoft Edge A
 
 | Store | Package | Also upload |
 | --- | --- | --- |
-| Firefox Add-ons | `writehand-<version>-firefox.zip` | `writehand-<version>-source.zip` as the source code (build instructions: [BUILD.md](./BUILD.md)); screenshots from `store/screenshots/en/`. AMO does not accept a video |
+| Firefox Add-ons | `writehand-<version>-firefox.zip` | `writehand-<version>-source.zip` as the source code (build instructions: [BUILD.md](./BUILD.md)); screenshots from `store/screenshots/en/`. AMO does not accept a video. Desktop Firefox only: the manifest has no `gecko_android`, so the listing is not offered on Firefox for Android |
 | Microsoft Edge Add-ons | `writehand-<version>-chromium.zip` | `store/icons/edge-store-logo-300.png`; all screenshots; `store/promo/small-promo-440x280.png` and `marquee-1400x560.png`; the YouTube video link |
 | Chrome Web Store | the same `writehand-<version>-chromium.zip` | `store/icons/chrome-store-icon-128.png`; screenshots `01` to `05` (the store accepts five); the two promo tiles; the YouTube video link |
 
 For every store listing:
 
-- **Privacy policy:** link to [PRIVACY.md](../PRIVACY.md) on GitHub (`https://github.com/dervisgenc/writehand/blob/main/PRIVACY.md`). Keep the stores' data use answers consistent with it: text is sent to the AI provider the user chose only on request; there is no analytics or server. The Firefox manifest declares `personalCommunications` and `authenticationInfo`.
+- **Privacy policy:** Edge Add-ons and the Chrome Web Store take a link: `https://github.com/dervisgenc/writehand/blob/main/PRIVACY.md`. Firefox Add-ons takes the text itself: paste the content of [PRIVACY.md](../PRIVACY.md) into the listing's privacy policy field, and paste it again whenever the policy changes. Keep the stores' data use answers consistent with it: text is sent to the AI provider the user chose only on request; there is no analytics or server. The Firefox manifest declares `personalCommunications` and `authenticationInfo`; in the Chrome Web Store's privacy practices, select *Personal communications* and *Authentication information*, and answer *No* for remote code.
+- **Description:** say that the API key method needs nothing else, and that the ChatGPT and Claude plans need the separate, open-source helper app (link to the repository). Edge Add-ons requires this disclosure for software outside the extension. Describe the plans as the user's own signed-in accounts; never describe Writehand as a way around a provider's usage limits.
 - **Permission justification:** `storage` holds the settings; the optional `nativeMessaging` permission lets the extension talk to the open-source helper app that holds the AI connection on the user's computer, and the welcome wizard asks for it with an explanation. Content scripts run only on the four Outlook on the web origins and on Gmail (`mail.google.com`).
-- **Review notes:** `web-ext lint` reports warnings from library code only (Zod's `eval` capability probe, disabled with `jitless`, and Vue's runtime `innerHTML` path).
+- **Review notes:** reviewers do not contact you, so the notes must let them test without help:
+
+  ```text
+  How to test without installing anything else:
+  1. Install the extension. The welcome page opens; choose "API key" and select Groq.
+  2. Paste this test key (spending limit set): <key>. Allow the browser to connect to api.groq.com.
+  3. Select "Try it" to revise a sample email, or open a draft in Outlook on the web or Gmail.
+
+  The optional nativeMessaging permission is requested only when the user chooses the
+  ChatGPT or Claude plan. It talks to Writehand's own open-source helper app
+  (https://github.com/dervisgenc/writehand/tree/main/apps/ai-companion), which the user
+  installs separately; the extension works without it.
+
+  web-ext lint warnings come from bundled libraries only: Zod's Function() capability probe
+  (code generation is disabled with jitless and blocked by the extension CSP) and Vue's
+  runtime innerHTML path. There is no remote code.
+  ```
+
+  For Firefox Add-ons also add: "Build: Node.js 24, pnpm 12.11.2; `pnpm install --frozen-lockfile && pnpm --filter @writehand/browser-extension zip:all`. See docs/BUILD.md in the source archive." Create a separate Groq key for reviewers and delete it after approval.
 
 ### Adding the store IDs
 
@@ -177,4 +196,19 @@ All workflows are in `.github/workflows/`. The pnpm store is cached through `pnp
 | --- | --- | --- |
 | `ci.yml` | Every pull request and every push to `main` | `pnpm check` on Ubuntu, macOS and Windows; the Chromium end-to-end tests and the Firefox smoke test on Ubuntu (test results are uploaded on failure); calls `helper.yml` |
 | `helper.yml` | Called by `ci.yml` and `release.yml` | Builds the Outlook add-in's task pane, then the single-file helper app, which carries it, on macOS arm64 and x64, Linux x64 and arm64, and Windows x64. Installs it with `install.sh` or `install.ps1` from a local folder (`WRITEHAND_DOWNLOAD_BASE`, unsigned `SHA256SUMS`), runs `writehand status`, starts the program the way a browser does, with a minimal environment, and asks `HOST_INFO` over native messaging framing (`scripts/smoke-helper.mjs`), uninstalls it and checks that its files (and on Windows its registry keys) are gone. Uploads the archives as artifacts |
-| `release.yml` | Tags matching `v*` | Version check, `helper.yml`, extension packages and source archive, then signing, provenance attestation and the draft release (see [Release steps](#release-steps)). Only the final job has write permissions (`contents`, `id-token`, `attestations`) and the signing secret |
+| `release.yml` | Tags matching `v*` | Version check, `helper.yml`, extension packages and source archive, then signing, provenance attestation and the draft release (see [Release steps](#release-steps)). Only the final job has write permissions (`contents`, `id-token`, `attestations`) and the signing secret, and it runs in the `release` environment |
+
+### Supply chain
+
+- **Pinned actions.** Every third-party action is pinned to a full commit SHA with its version in a comment (`uses: actions/checkout@<sha> # v7.0.1`). A moved or hijacked tag cannot change what runs, which matters because the release build is signed and attested. Dependabot (`.github/dependabot.yml`) opens one grouped pull request a month with new SHAs; read the actions' release notes before merging it.
+- **No stored token.** `actions/checkout` runs with `persist-credentials: false`, so the job token is not left in `.git/config`; the draft release is created with `gh` and `GH_TOKEN`.
+- **Pull requests from forks** run `ci.yml` with read-only permissions and no secrets.
+
+### Release protection (GitHub settings)
+
+These settings live in the repository settings, not in the code. They make sure that only you can produce a signed release, even if a token with write access leaks. Set them up once:
+
+1. **Environment.** Settings → Environments → `release` (the first release run creates it; you can also create it with **New environment**). Under **Deployment branches and tags**, choose **Selected branches and tags** and add the tag rule `v*`. Optional: under **Required reviewers**, add yourself; every release then waits until you select **Approve and deploy** on the run.
+2. **Signing key as an environment secret.** In the same environment, **Add environment secret** named `WRITEHAND_RELEASE_SIGNING_KEY` with the same PEM text as the repository secret (`gh secret set WRITEHAND_RELEASE_SIGNING_KEY --env release < ~/writehand-release-signing-key.pem`). Start a release to check it, then delete the repository secret (`gh secret delete WRITEHAND_RELEASE_SIGNING_KEY`). From then on only a job in `release`, started by a `v*` tag, can read the key.
+3. **Tag ruleset.** Settings → Rules → Rulesets → **New ruleset → New tag ruleset**: name `release tags`, enforcement **Active**, target pattern `v*`, rules **Restrict creations**, **Restrict updates** and **Restrict deletions**, and add **Repository admin** to the bypass list. Only admins can then create or move release tags.
+

@@ -4,7 +4,7 @@ This note is for add-on store reviewers and anyone who wants to reproduce the re
 
 ## Requirements
 
-- Node.js 24 LTS
+- Node.js 24 LTS (`.nvmrc`)
 - pnpm 12.11.2 (`npm install -g pnpm@12.11.2`; the version is pinned in `package.json` → `packageManager`)
 - Linux, macOS or Windows; no other system tools are needed for the extension
 
@@ -23,6 +23,10 @@ This writes, under `apps/browser-extension/.output/`:
 | `writehand-<version>-chrome.zip` (attached to releases as `-chromium.zip`) | Chrome Web Store, Microsoft Edge Add-ons; Brave installs from the Chrome Web Store | `chrome-mv3/` |
 
 The build is WXT (Vite) with Vue 3; nothing is downloaded at run time and no code is minified away from its source beyond Vite's standard production build. `pnpm verify:packages` checks permissions, content script matches and that no development code is included.
+
+The build is deterministic: building the same commit twice gives byte-identical files. To compare a rebuild with a store package, unpack the package and compare it with the unpacked build, for example `unzip -q writehand-<version>-firefox.zip -d store-package && diff -r store-package apps/browser-extension/.output/firefox-mv3`.
+
+The source archive is the whole repository. The extension needs only `apps/browser-extension` and the `packages/` it depends on; `apps/ai-companion` (the helper app) and `apps/outlook-addin` (the Outlook add-in) are separate programs that are not part of the extension packages.
 
 ## Helper app
 

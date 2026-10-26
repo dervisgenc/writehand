@@ -2,7 +2,7 @@
 
 _Effective date: October 25, 2026_
 
-Writehand is a free, open-source writing assistant for Outlook on the web and Gmail. It consists of a browser extension and, for the ChatGPT and Claude plans, a small helper app that runs on your computer. An add-in for the Outlook applications is in development; how it differs is described in [Outlook add-in](#outlook-add-in-in-development). This policy covers all three.
+Writehand is a free, open-source writing assistant for Outlook on the web and Gmail. It consists of a browser extension and, for the ChatGPT and Claude plans, a small helper app that runs on your computer. An add-in for the Outlook applications on Windows is available as a preview; how it differs is described in [Outlook add-in](#outlook-add-in-preview). This policy covers all three.
 
 **In short:** Writehand has no server, no account system, no analytics, no advertising and no error reporting. The developer never receives your emails, your text or your sign-in details. Your text goes only to the AI provider you choose, and only when you ask for it.
 
@@ -57,9 +57,9 @@ While update checks are turned on (the default), the helper app asks GitHub at m
 | Native messaging (optional, requested when you choose the ChatGPT or Claude plan) | To talk to the helper app on your computer, which holds those connections. |
 | Access to `api.groq.com`, `openrouter.ai` or `api.openai.com` (optional, requested when you connect an API key for that provider) | To send your generation requests to the provider whose key you connected. Writehand does not get access to any other site. |
 
-## Outlook add-in (in development)
+## Outlook add-in (preview)
 
-The Outlook add-in brings Writehand to the Outlook applications (first the new Outlook and classic Outlook for Windows) as an Office add-in. It is not released yet. It uses the ChatGPT and Claude plans through the helper app, or your own API key. Everything above applies, with these differences:
+The Outlook add-in brings Writehand to the Outlook applications (first the new Outlook and classic Outlook for Windows) as an Office add-in. It is a preview, released for Windows. It uses the ChatGPT and Claude plans through the helper app, or your own API key. Everything above applies, with these differences:
 
 - **Where it runs.** The helper app serves the add-in's page on your computer (`https://localhost:41537`) after you turn this on with `writehand outlook enable` or the Outlook install command; the page comes from the helper app you installed, not from a website. Only Microsoft's Office.js library, which Outlook requires, is loaded from Microsoft, which sees that request (your IP address and browser details). No email content, text or key is sent to Microsoft or to Writehand. To serve the page over HTTPS, `writehand outlook enable` adds a certificate valid only for your computer's local addresses to your trusted certificates, with your confirmation; it contains no personal data. The first time, it also puts the add-in's file path on your clipboard and opens Microsoft's add-in page (`https://aka.ms/olksideload`) in your browser, where you add the add-in yourself.
 - **ChatGPT and Claude plans.** The page sends a plan's request to the helper app on the same computer, which handles it exactly as for the browser extension: your text goes to OpenAI (ChatGPT plan) or Anthropic (Claude plan) only when you request a generation. The helper app's accounts, tokens and model choice are shared with the browser extension on this computer.
