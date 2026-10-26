@@ -138,6 +138,10 @@ for (const [browser, directory] of Object.entries(outputs)) {
     if (typeof gecko?.id !== 'string') fail(browser, 'browser_specific_settings.gecko.id is missing.');
     if (gecko?.data_collection_permissions === undefined)
       fail(browser, 'The Firefox data collection declaration is missing.');
+    // Firefox for Android has no native messaging and is not tested; declaring it would list the
+    // extension there. Add `gecko_android` only together with a recorded check on a device.
+    if (manifest.browser_specific_settings?.gecko_android !== undefined)
+      fail(browser, 'The Firefox package must not declare Firefox for Android (gecko_android).');
   }
 
   for (const file of filesIn(directory)) {
