@@ -4,10 +4,12 @@ All notable changes to Writehand are recorded here. The extension, the helper ap
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-26
+
 ### Added
 
-- **Outlook add-in (in development, not released):** Writehand as an Office add-in for the Outlook applications, Windows first. A **Writehand** button on the ribbon opens a task pane with the same panel: revise or translate the selected text of a draft, write into an empty draft or a new message, or open a new reply to the email you are reading with the result. On a draft, **Writehand** is a menu whose **Revise**, **Translate** and **Write** open the pane with that operation started; **Revise** needs no further click. It works with the ChatGPT and Claude plans through the helper app, or with your own API key from Groq, OpenRouter or OpenAI, stored encrypted in that Outlook application. Context is the open item only: the email you read, or the earlier mail quoted in your reply. It asks Outlook only for access to the open item and never sends email. See [docs/OUTLOOK_ADDIN.md](./docs/OUTLOOK_ADDIN.md).
-- `writehand outlook enable | disable | status` (Windows): the helper app serves the Outlook add-in on `https://localhost:41537`, so the add-in reaches the ChatGPT and Claude plans. Windows asks once to trust a certificate that is valid only for the computer's local addresses (its authority's private key is never stored); the server starts at sign-in without a window and follows helper app updates. The first time, it opens Outlook on the web's add-in dialog with the manifest's path on the clipboard. See [docs/HELPER_APP.md](./docs/HELPER_APP.md#outlook-add-in-server-windows).
+- **Outlook add-in (preview, Windows):** Writehand as an Office add-in for the Outlook applications, Windows first. A **Writehand** button on the ribbon opens a task pane with the same panel: revise or translate the selected text of a draft, write into an empty draft or a new message, or open a new reply to the email you are reading with the result. On a draft, **Writehand** is a menu whose **Revise**, **Translate** and **Write** open the pane with that operation started; **Revise** needs no further click. It works with the ChatGPT and Claude plans through the helper app, or with your own API key from Groq, OpenRouter or OpenAI, stored encrypted in that Outlook application. Context is the open item only: the email you read, or the earlier mail quoted in your reply. It asks Outlook only for access to the open item and never sends email. See [docs/OUTLOOK_ADDIN.md](./docs/OUTLOOK_ADDIN.md).
+- `writehand outlook enable | disable | status` (Windows): the helper app serves the Outlook add-in on `https://localhost:41537`, so the add-in reaches the ChatGPT and Claude plans. Windows asks once to trust a certificate that is valid only for the computer's local addresses (its authority's private key is never stored); the server starts at sign-in without a window and follows helper app updates. The first time, it opens Outlook on the web's add-in dialog with the manifest's path on the clipboard. The manifest carries a random page key of this user, and the server gives the pane access to the helper app only when it is opened with that key, so other Windows accounts on the same computer cannot use the user's ChatGPT or Claude connection. See [docs/HELPER_APP.md](./docs/HELPER_APP.md#outlook-add-in-server-windows).
 - `install-outlook.ps1`: one PowerShell command installs the helper app and turns on its Outlook add-in server (`install.ps1 -Outlook`, `writehand install --outlook`); the browsers' command is unchanged.
 - **Gmail on the web** (`mail.google.com`), for personal Google accounts and Google Workspace: the same toolbar, card and panel as in Outlook on the web, with the open conversation's expanded messages as context, inline replies and compose windows as drafts, and Gmail's signature and trimmed quote kept out of what is replaced. Gmail support is new: its page markers come from open-source Gmail extensions; reading a conversation and finding a compose window are checked on a real Gmail account, replies are not yet.
 - A switch per mail service in the settings (Outlook on the web, Gmail); the welcome wizard links to Gmail too.
@@ -16,11 +18,16 @@ All notable changes to Writehand are recorded here. The extension, the helper ap
 - `pnpm gmail:inspect` runs the extension's reading code on a live Gmail tab with masked output, for checking Gmail's page markers.
 - API keys work in the extension itself, without the helper app: connect a key from Groq, OpenRouter or OpenAI in the settings or the welcome wizard. Groq's free plan and OpenRouter's free models need no payment method; with Groq, OpenAI's free open-weight model `openai/gpt-oss-120b` is selected by itself.
 - Keys are checked with the provider before they are saved, stored encrypted in the browser (AES-GCM with a non-extractable key in the extension's own storage) and sent only to their provider. The browser asks for access to a provider's API only when you connect a key for it.
-- **Sign in through Codex** (experimental) for ChatGPT Business, Enterprise and Edu workspaces, where OpenAI's Sign in with ChatGPT is blocked by organization policy. It uses the sign-in of OpenAI's Codex CLI, without installing Codex, and generates on ChatGPT's Codex backend for the chosen workspace.
+- **Sign in through Codex** (experimental) for ChatGPT Business, Enterprise and Edu workspaces, where OpenAI's Sign in with ChatGPT is blocked by organization policy. It uses the sign-in of OpenAI's Codex CLI, without installing Codex, and generates on ChatGPT's Codex backend for the chosen workspace. Before it starts, a warning explains that it is meant for those workspaces, that OpenAI has not published this sign-in for other apps, that it can stop working at any time and that OpenAI may restrict accounts that use it this way; the sign-in starts only after you confirm.
 - A separate error for a workspace or API account without credits (`AI_CREDITS_EXHAUSTED`), apart from plan usage limits.
 
 ### Changed
 
+- The store description says "no email is sent" instead of "nothing is sent": your text does go to the AI provider you chose when you ask for it.
+- Firefox: the extension is offered for desktop Firefox only. Firefox for Android has no native messaging and was never tested, so the extension no longer declares it.
+- Helper app on macOS and Linux: the install script downloads only over HTTPS and runs only after it has been read completely, so a download that stops halfway runs nothing; without `sha256sum` or `shasum` it says so instead of reporting a wrong checksum.
+- Helper app on Windows: a data folder that already exists (for example after an uninstall without `-DeleteData`) gets the same user-only access as a new one.
+- Helper app: reading the connection status no longer rewrites `credentials.json` every few seconds; the file is written only when something in it changes.
 - The panel session, the AI connection (the API key method, the helper app client and the method choice), the interface texts and the settings form are shared packages now, used by the extension and the Outlook add-in; the extension works as before.
 - The extension now asks for access to `mail.google.com`. Chromium browsers ask existing users to accept this new permission when the extension updates.
 - Settings schema version 4 adds the Gmail switch, turned on; the Outlook switch keeps its value.
@@ -29,6 +36,12 @@ All notable changes to Writehand are recorded here. The extension, the helper ap
 - The connection method is chosen per browser profile; the helper app follows the method of the browser that uses it.
 - The helper app no longer keeps an OpenAI API key. A key saved by helper app 0.1.0 is deleted the next time the helper app writes its credentials file; connect it again in the extension, where OpenAI is preselected for you.
 - The organization-policy error (`AI_POLICY_DENIED`) explains that Business workspaces currently cannot allow Sign in with ChatGPT, points to the Codex sign-in and names the Admin Console setting for Enterprise and Edu.
+
+### Security
+
+- The release workflow's actions are pinned to commit SHAs, Dependabot keeps them current, checkouts no longer keep the job token, and the signing job runs in a `release` environment that can hold the signing key and require approval ([Releasing](./docs/RELEASING.md#release-protection-github-settings)).
+- `SECURITY.md` states that the first install is protected by HTTPS and a checksum, not by the release signature, and describes the Codex sign-in's account risk and fixed ports.
+- Development dependencies updated: `undici`, `fast-uri` and `shell-quote` (through an override for `web-ext`'s Firefox launcher). None of them is part of the extension, the add-in or the helper app.
 
 ### Fixed
 
